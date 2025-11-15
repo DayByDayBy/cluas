@@ -91,3 +91,19 @@ class CorvusMCP:
                 })
 
         return cleaned
+
+
+
+
+
+# poss usage example:
+    
+# from src.characters.corvus import CorvusMCP
+
+# corvus = CorvusMCP()
+# papers = corvus.search_papers("corvid cognition", max_results=3)
+
+# for p in papers:
+#     print(f"{p['title']} ({p.get('doi')})")
+#     print(f"Snippet: {p['abstract']}\n")
+    

@@ -1,11 +1,11 @@
 import time
 from typing import List, Optional, Dict
-from ..cluas_mcp.common.cache import CacheManager
+from ..cluas_mcp.common.memory import AgentMemory
 from ..cluas_mcp.common.api_clients import PubMedClient, SemanticScholarClient, ArxivClient
 from ..cluas_mcp.common.formatting import format_authors, snippet_abstract
 
-# init cache manager (storing JSON locally)
-cache = CacheManager(cache_file="src/data/cache.json")
+# init shared council memory
+memory = AgentMemory(memory_file="src/data/memory.json")
 
 # init API clients
 pubmed = PubMedClient()
@@ -15,13 +15,14 @@ arxiv = ArxivClient()
 class CorvusMCP:
     """
     Corvus MCP tool: searches academic literature and returns structured results.
-    Prioritizes PubMed → Semantic Scholar → arXiv (fallback).
+    Automatically logs items into shared agent memory for council context.
     """
-    
+
     def search_papers(
         self, 
         query: str,
-        max_results: int = 5
+        max_results: int = 5,
+        memory_days: int = 30  # optional: include recent memory items
     ) -> List[Dict]:
         """
         Search academic papers for a query string.
@@ -35,37 +36,58 @@ class CorvusMCP:
             "link": str
         }
         """
-        # first, check cache
-        cached = cache.get(query)
-        if cached:
-            return cached
-        
+
         results = []
 
-        # --- 1. Try PubMed first ---
+        # --- 1. try PubMed ---
         results = pubmed.search(query, max_results=max_results)
-        
-        # --- 2. Fallback to Semantic Scholar if no pubmed ---
+
+        # --- 2. fallback to Semantic Scholar ---
         if not results:
             results = semantic.search(query, max_results=max_results)
 
-        # --- 3. arXiv if still none (remembering lack of DOI for some) ---
+        # --- 3. fallback to arXiv ---
         if not results:
             results = arxiv.search(query, max_results=max_results)
-        
-        # --- 4. Clean / format results ---
+
         cleaned = []
+
         for r in results:
+            title = r.get("title", "Untitled")
+            abstract = snippet_abstract(r.get("abstract", ""))
+            authors = format_authors(r.get("authors", []))
+            doi = r.get("doi")
+            link = r.get("link", r.get("arxiv_link", ""))
+
+            # log into memory
+            memory.add_item(
+                title=title,
+                doi=doi,
+                snippet=abstract,
+                mentioned_by="Corvus",
+                tags=["academic_search"]
+            )
+
             cleaned.append({
-                "title": r.get("title", "Untitled"),
-                "abstract": snippet_abstract(r.get("abstract", "")),
-                "authors": format_authors(r.get("authors", [])),
+                "title": title,
+                "abstract": abstract,
+                "authors": authors,
                 "published": r.get("published", ""),
-                "doi": r.get("doi", None),
-                "link": r.get("link", r.get("arxiv_link", ""))
+                "doi": doi,
+                "link": link
             })
 
-        # save to cache for future RAG retrieval
-        cache.set(query, cleaned)
+        # include recent memory items optionally
+        recent_memory = memory.get_recent(days=memory_days)
+        for item in recent_memory:
+            if item["title"] not in [c["title"] for c in cleaned]:
+                cleaned.append({
+                    "title": item["title"],
+                    "abstract": item.get("snippet", ""),
+                    "authors": "",  # optional: keep minimal
+                    "published": "",
+                    "doi": item.get("doi"),
+                    "link": item.get("doi") or "",
+                })
 
         return cleaned

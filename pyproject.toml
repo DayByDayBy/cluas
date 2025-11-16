@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "feedparser>=6.0.12",
-    "gradio>=5.49.1",
+    "gradio[mcp,oauth]==6.0.0.dev4",
     "mcp>=1.20.0",
     "requests>=2.32.5",
 ]

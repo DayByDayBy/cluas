@@ -1,0 +1,32 @@
+corvid-council/
+├── README.md
+├── .env.example
+├── src/
+│   ├── __init__.py
+│   ├── orchestrator.py          # CouncilOrchestrator
+│   ├── character.py             # Character base class
+│   ├── characters/
+│   │   ├── corvus.py
+│   │   ├── magpie.py
+│   │   ├── raven.py
+│   │   └── crow.py
+│   ├── mcp/
+│   │   ├── server.py            # Internal MCP server
+│   │   ├── tools/
+│   │   │   ├── academic.py
+│   │   │   ├── social.py
+│   │   │   ├── realtime.py
+│   │   │   └── observational.py
+│   │   └── external.py          # Exposed MCP tools
+│   ├── memory/
+│   │   └── agent_memory.py      # Shared memory / cache
+│   ├── ui/
+│   │   ├── interface.py
+│   │   └── components.py
+│   └── utils/
+│       ├── prompts.py
+│       └── helpers.py
+└── tests/
+    ├── test_orchestrator.py
+    ├── test_characters.py
+    └── test_agent_memory.py

@@ -1,0 +1,48 @@
+                ┌─────────────────────────────────────┐
+                │           User / Client             │
+                │ (Claude Desktop, App, API caller)   │
+                └────────────────────┬────────────────┘
+                                     │ ask_council()
+                                     ▼
+                ┌─────────────────────────────────────┐
+                │      Corvid Council MCP Server      │
+                │   (Gradio chat + MCP tool handler)  │
+                └────────────────────┬────────────────┘
+                                     │ orchestrates
+                                     ▼
+                ┌─────────────────────────────────────┐
+                │        Council Orchestrator         │
+                │ - Calls individual agents           │
+                │ - Coordinates group chat flow       │
+                └────────────────────┬────────────────┘
+                                     │
+         ┌───────────────────────────┼─────────────────────────────┐
+         ▼                           ▼                             ▼
+┌─────────────────┐       ┌─────────────────┐          ┌─────────────────┐
+│     Corvus      │       │     Magpie      │          │     Raven       │
+│ (Academic AI)   │       │ (Trends AI)     │          │ (Deep-Focus AI)│
+│ PubMed/S2 API   │       │ Web/Social API  │          │ Feeds/Alerts    │
+└───────┬─────────┘       └───────┬─────────┘          └───────┬─────────┘
+        │                           │                             │
+        └──────────────┬────────────┴────────────┬───────────────┘
+                       ▼                           ▼
+                ┌─────────────────────────────────────┐
+                │            Agent Memory             │
+                │  (shared JSON/DB knowledge log)     │
+                │ - recent papers, trends, facts      │
+                │ - tags, timestamps, DOIs            │
+                │ - enables recall & “inside jokes”   │
+                └─────────────────────────────────────┘
+                                     │
+                                     ▼
+                ┌─────────────────────────────────────┐
+                │        LLM Consensus Layer           │
+                │ - builds final group answer          │
+                │ - personality + expertise mixing     │
+                └─────────────────────────────────────┘
+                                     │
+                                     ▼
+                ┌─────────────────────────────────────┐
+                │          Final Output               │
+                │  (chat replay + structured answer)  │
+                └─────────────────────────────────────┘

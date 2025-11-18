@@ -1,0 +1,181 @@
+Project Overview
+
+Name: Cluas
+Hackathon / Track: Gradio Agents & MCP Hackathon – Winter 25, Creative Track
+Concept: A multi-agent MCP system where four AI “crow experts” discuss topics, each using specialized tools. Users can either observe the panel in a Gradio chat interface or query it programmatically via MCP.
+
+Hook:
+“What if you could consult a panel of AI experts that not only debates, researches, and cross-verifies claims but also maintains a shared memory across sessions?”
+
+Architecture Overview
+External User/App (Claude Desktop, etc.)
+    ↓ (calls MCP tool)
+ask_crow_council(question)
+    ↓
+Gradio App (MCP server)
+    ↓
+CouncilOrchestrator
+    ↓
+4 Character Agents (Corvus, Magpie, Raven, Crow)
+    ↓
+Character-Specific MCP Tools (~12–15 total)
+    ↓
+External APIs (Semantic Scholar, eBird, Weather, News)
+    ↓
+Shared AgentMemory (JSON / DB)
+    ↓
+Synthesized Response → User
+
+
+Key Differences vs. earlier plan:
+
+AgentMemory is first-class: acts as shared context, not just caching.
+
+Cache is memory: supports cross-agent recall, deduplication, “didn’t we discuss this?”
+
+Tool orchestration is separate from UI: backend drives both Gradio interface and MCP endpoint.
+
+Characters
+Character	Role	Personality	Core Tools	Behavior
+Corvus	Scholar	Analytical, cautious, thorough	search_academic, get_paper_details, verify_claim, citation_network	Reads literature, fact-checks, posts rarely but substantively
+Magpie	Enthusiast	Social, rapid-fire, excited	search_social, search_web, find_trending	Posts frequently, may repeat info, creates conversational energy
+Raven	Activist	Urgent, confrontational, data-driven	get_environmental_data, search_news, fact_check_claim, analyze_sentiment	Searches real-time threats, challenges others’ claims
+Crow	Observer	Calm, patient, contemplative	get_sightings, get_weather_patterns, analyze_temporal_patterns	Rarely posts, synthesizes patterns, provides perspective
+
+Notes:
+
+Each character writes in a distinct voice.
+
+AgentMemory is referenced when appropriate to recall past papers, claims, or events.
+
+Tools are abstracted behind MCP methods for modularity.
+
+MCP Tool Architecture
+
+Internal MCP Tools (Character Tools):
+
+Academic (Corvus): 4 tools
+
+Social/Web (Magpie): 3 tools
+
+Real-time Data (Raven): 4 tools
+
+Observational (Crow): 3 tools
+
+External MCP Tools (Exposed via Gradio App):
+
+@mcp.tool()
+async def ask_crow_council(question: str) -> dict:
+    """Consult all 4 characters; return synthesized response with sources."""
+
+@mcp.tool()
+async def ask_specific_expert(question: str, expert: Literal["corvus", "magpie", "raven", "crow"]) -> dict:
+    """Query a single character."""
+
+@mcp.tool()
+async def fact_check_claim(claim: str) -> dict:
+    """Have the council verify a claim using AgentMemory and tools."""
+
+
+AgentMemory Integration:
+
+Logs items with metadata: title, DOI/arXiv link, snippet, timestamp, tags.
+
+Retrieval methods: get_recent(days), get_by_tag(tag), search_title(query).
+
+Can prune old memories; supports both short-term and long-term context.
+
+Project Structure (Updated for Modularity)
+cluas/
+├── README.md
+├── .env.example
+├── src/
+│   ├── __init__.py
+│   ├── orchestrator.py          # CouncilOrchestrator
+│   ├── character.py             # Character base class
+│   ├── characters/
+│   │   ├── corvus.py
+│   │   ├── magpie.py
+│   │   ├── raven.py
+│   │   └── crow.py
+│   ├── mcp/
+│   │   ├── server.py            # Internal MCP server
+│   │   ├── tools/
+│   │   │   ├── academic.py
+│   │   │   ├── social.py
+│   │   │   ├── realtime.py
+│   │   │   └── observational.py
+│   │   └── external.py          # Exposed MCP tools
+│   ├── memory/
+│   │   └── agent_memory.py      # Shared memory / cache
+│   ├── ui/
+│   │   ├── interface.py
+│   │   └── components.py
+│   └── utils/
+│       ├── prompts.py
+│       └── helpers.py
+└── tests/
+    ├── test_orchestrator.py
+    ├── test_characters.py
+    └── test_agent_memory.py
+
+Development Phases (Current Scope)
+Phase 1 – Core MVP
+
+Corvus implemented with 2 academic tools.
+
+Basic AgentMemory operational (short-term storage).
+
+Basic Gradio chat interface.
+
+Tool orchestration scaffolding in place.
+
+Phase 2 – Additional Characters & Tools
+
+Add Magpie and Raven with partial tools.
+
+Implement staggered responses, typing indicators.
+
+Ensure memory integration across agents.
+
+Phase 3 – Full Council & MCP Exposure
+
+Crow added.
+
+Expose ask_crow_council() and ask_specific_expert().
+
+Test multi-agent synthesis and external calls.
+
+Phase 4 – Polish & Deploy
+
+Error handling, retries, and rate limiting.
+
+Memory pruning, long-term storage optional (Supabase / MongoDB).
+
+UI/UX polish for Gradio.
+
+Demo-ready, hackathon-ready deployment.
+
+Key Implementation Patterns
+
+Tool orchestration per character – each agent decides which tools to use, executes asynchronously.
+
+Staggered responses – enhances human-like timing.
+
+Memory-driven context – prior discussions inform current responses.
+
+Consensus synthesis – LLM generates unified response for MCP output.
+
+Technical Stack
+
+Python 3.13 (uv-managed)
+
+Gradio 5.x with MCP
+
+MCP SDK for server and tools
+
+LLM: gpt-4o-mini (Anthropic optional)
+
+APIs: Semantic Scholar, eBird, News API, OpenWeather
+
+Data/Memory: JSON for now, possible future DB (Supabase or MongoDB)

@@ -1,10 +1,34 @@
 import requests
 import feedparser
+import urllib.parse
+import xml.etree.ElementTree as ET
 
-class PubMedClient:
-    def search(self, query, max_results=5):
-        # Placeholder: implement actual PubMed API call
-        return []
+
+
+class PubMedClient:        
+    
+    def parse_id_list(xml: str) -> list[str]:
+        root = ET.fromstring(xml)
+        id_list = root.find('IdList')
+        ids = [id_elem.text for id_elem in id_list.findall('Id')]
+        return ids
+    
+    
+    def pubmed_search(keywords: list[str], extra_terms: list[str] = None) -> list[str]:
+        # OR-groups must be wrapped for logical correctness
+        base = "(" + " OR ".join(keywords) + ")"
+
+        if extra_terms:
+            extras = "(" + " OR ".join(extra_terms) + ")"
+            base = f"{base} AND {extras}"
+
+        url = (
+            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+            f"?db=pubmed&term={urllib.parse.quote(base)}&retmax=20"
+        )
+
+        xml = requests.get(url).text
+        return parse_id_list(xml)
 
 class SemanticScholarClient:
     def search(self, query, max_results=5):
@@ -88,3 +112,10 @@ class ArxivClient:
 
 #     # now you have doi, title, author_str, abstract, conclusion
 #     print(pmid, doi, title, author_str, conclusion)
+
+
+
+
+
+# f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}'
+#         f'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={id[0]}&retmode=xml&rettype=abstract'

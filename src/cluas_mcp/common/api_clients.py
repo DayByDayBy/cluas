@@ -1,3 +1,4 @@
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import requests
 import feedparser
 import xml.etree.ElementTree as ET

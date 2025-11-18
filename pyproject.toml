@@ -1,5 +1,5 @@
 [project]
-name = "mcp-course-hf"
+name = "cluas"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -9,4 +9,7 @@ dependencies = [
     "gradio[mcp,oauth]==6.0.0.dev4",
     "mcp>=1.20.0",
     "requests>=2.32.5",
+    "tenacity>=9.1.2",
 ]
+
+

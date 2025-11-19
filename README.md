@@ -65,6 +65,17 @@ it's conducting ongoing research.
 
 ---
 
+testing via pytest
+
+live API calls:
+```uv run pytest -q tests/clients```
+non-calling tests:
+```uv run pytest -q tests/clients/non_calling```
+
+
+
+
+
 
 
 This project is licensed under the [Apache 2.0 License](LICENSE).

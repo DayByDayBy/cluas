@@ -1,7 +1,7 @@
 from cluas_mcp.academic.arxiv import ArxivClient
 
 def test_arxiv_basic():
-    results = ArxivClient.search("all:corvid", max_results=2)
+    results = ArxivClient.search("all:corvid", max_results=5)
     assert isinstance(results, list)
     if results:  # don’t fail if ArXiv returns nothing
         first = results[0]

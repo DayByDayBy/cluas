@@ -1,11 +1,69 @@
+import logging
 import xml.etree.ElementTree as ET
 import urllib.parse
 from typing import List, Optional, Dict, Any
-
+from cluas_mcp.domain.keywords import CORVID_KEYWORDS
 from cluas_mcp.common.http import fetch_with_retry
+
+logger = logging.getLogger(__name__)
 
 class PubMedClient:
     """Lightweight PubMed search client (ID only)."""
+      
+    @staticmethod
+    def fetch_articles(pmids: List[str]) -> List[Dict[str, Any]]:
+        """Fetch full article details for a list of PubMed IDs."""
+        if not pmids:
+            logger.info("No PMIDs provided, returning empty list")
+            return []
+
+        ids = ",".join(pmids)
+        url = (
+            f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+            f"?db=pubmed&id={ids}&retmode=xml&rettype=abstract"
+        )
+
+        try:
+            response = fetch_with_retry(url)
+            root = ET.fromstring(response.text)
+        except Exception as e:
+            logger.warning("Skipping article due to parse error: %s", e)
+            return []
+        
+        articles = []
+        skipped = 0
+        for article_elem in root.findall(".//PubmedArticle"):
+            try:
+                medline = article_elem.find(".//MedlineCitation")
+                if medline is None:
+                    skipped += 1
+                    continue
+                article_data = medline.find("Article")
+                pmid_elem = medline.find("PMID")
+                title_elem = article_data.find("ArticleTitle") if article_data is not None else None
+                abstract_elem = article_data.find("Abstract/AbstractText") if article_data is not None else None
+                authors, author_str = PubMedClient.parse_authors(article_data)
+                doi_elem = article_data.find(".//ELocationID[@EIdType='doi']") if article_data is not None else None
+                pubmed_link = f"https://pubmed.ncbi.nlm.nih.gov/{pmid_elem.text}/" if pmid_elem is not None else None
+                
+                articles.append({
+                    "pmid": pmid_elem.text if pmid_elem is not None else None,
+                    "title": title_elem.text if title_elem is not None else "Untitled",
+                    "abstract": abstract_elem.text if abstract_elem is not None else "",
+                    "authors": authors,
+                    "author_str": author_str,
+                    "doi": doi_elem.text if doi_elem is not None else None,
+                    "pubmed_link": pubmed_link,
+                    "stage": "peer_reviewed"
+                })
+            except Exception as e:
+                skipped += 1
+                logger.warning(f"Skipping article due to parse error: {e}")
+                continue
+            
+        if skipped:
+            logger.info(f"Skipped {skipped} articles due to parse errors")
+        return articles    
 
     @staticmethod
     def parse_id_list(xml: str) -> List[str]:
@@ -23,14 +81,15 @@ class PubMedClient:
 
     @staticmethod
     def pubmed_search(
-        keywords: List[str],
+        keywords: List[str] = None,
         extra_terms: Optional[List[str]] = None,
         retmax: int = 20,
         email: Optional[str] = None,  # add an email later - sort the forwarding first
         tool: str = "cluas_mcp",
     ) -> List[str]:
         """Search PubMed for (keywords OR ...) AND (extra_terms OR ...)."""
-
+        if keywords is None:
+            keywords = CORVID_KEYWORDS
         # 1. build query
         base = f"({' OR '.join(keywords)})"
         if extra_terms:
@@ -55,50 +114,7 @@ class PubMedClient:
             # shift to logging soon
             return []
         
-    @staticmethod
-    def fetch_articles(pmids: List[str]) -> List[Dict[str, Any]]:
-        """Fetch full article details for a list of PubMed IDs."""
-        if not pmids:
-            return []
-
-        ids = ",".join(pmids)
-        url = (
-            f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-            f"?db=pubmed&id={ids}&retmode=xml&rettype=abstract"
-        )
-
-        try:
-            response = fetch_with_retry(url)
-            root = ET.fromstring(response.text)
-        except Exception as e:
-            print(f"Failed to fetch articles: {e}")
-            return []
-
-        articles = []
-        for article_elem in root.findall(".//PubmedArticle"):
-            try:
-                medline = article_elem.find(".//MedlineCitation")
-                if medline is None:
-                    continue
-                article_data = medline.find("Article")
-                pmid_elem = medline.find("PMID")
-                
-                title_elem = medline.find("ArticleTitle") if article_data is not None else None
-                abstract_elem = article_data.find("Abstract/AbstractText") if article_data is not None else None
-                authors, author_str = PubMedClient.parse_authors(article_data)
-                
-                articles.append({
-                    "pmid": pmid_elem.text if pmid_elem is not None else None,
-                    "title": title_elem.text if title_elem is not None else "Untitled",
-                    "abstract": abstract_elem.text if abstract_elem is not None else "",
-                    "authors": authors,
-                    "author_str": author_str,
-                    "stage": "peer_reviewed"
-                })
-            except Exception:
-                continue
-
-        return articles
+    
     
     @staticmethod    
     def parse_authors(article_elem: ET.Element) -> tuple[list[str], str]:

@@ -121,3 +121,38 @@ A significant refactoring has occurred. The `PubMedClient` has been moved to a n
 
 -   **Concerning:**
     -   **Code Duplication:** The most pressing issue is the duplicated `PubMedClient` code. The old implementation in `src/cluas_mcp/common/api_clients.py` is now obsolete and should be removed to prevent confusion and future bugs. The other clients in that file should also be refactored into their own modules.
+
+---
+
+### November 18, 2025 (Evening)
+
+#### Summary of Changes
+
+A massive and highly positive refactoring has been completed. The API clients have been fully separated into their own modules, the `PubMedClient` is now feature-complete, a new `AcademicSearch` facade provides a single point of entry, domain keywords have been separated, and—most importantly—tests have been added for the API clients.
+
+#### Detailed Changes
+
+-   **Completed Refactoring**:
+    -   The API clients now live in `src/cluas_mcp/academic/` as `pubmed.py`, `arxiv.py`, and `semantic_scholar.py`.
+    -   The old `src/cluas_mcp/common/api_clients.py` file still exists but is now entirely obsolete.
+-   **Completed `PubMedClient`**:
+    -   The client in `academic/pubmed.py` now includes a `fetch_articles` method, completing the `esearch`/`efetch` workflow.
+-   **New `AcademicSearch` Facade**:
+    -   `academic/academic_search.py` provides a single `academic_search` function that calls all underlying clients, simplifying future use.
+-   **Domain Knowledge Separation**:
+    -   `src/cluas_mcp/domain/keywords.py` now stores keyword lists, separating this data from the client logic.
+-   **New Tests**:
+    -   `tests/test_arxiv.py` and `tests/test_pubmed.py` have been added, providing actual tests for the API clients.
+
+#### Analysis
+
+-   **Significant:**
+    -   This is a pivotal update. The project has rapidly matured from a proof-of-concept to a well-structured and tested data access layer. The addition of tests is the most significant and important change, as it provides a foundation for reliable future development.
+
+-   **Good:**
+    -   The architecture is now clean, modular, and extensible.
+    -   The separation of concerns (clients, domain data, facades) is excellent.
+    -   The data layer for the `Corvus` agent is now functionally complete and robust.
+
+-   **Concerning:**
+    -   The only remaining issue is the obsolete `src/cluas_mcp/common/api_clients.py` file. It should be deleted to finalize the cleanup.

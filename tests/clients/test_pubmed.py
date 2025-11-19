@@ -1,43 +1,37 @@
+import pytest
 from src.cluas_mcp.academic.pubmed import PubMedClient
 
-def test_pubmed_search():
-    """
-    Lightweight test harness for PubMed.
-    Prints the first `retmax` articles found for keywords + extra_terms.
-    """
-    keywords=["corvid"] 
-    extra_terms=None
-    retmax=5
-    
-    print(f"Searching PubMed for: {keywords} {'+' + str(extra_terms) if extra_terms else ''}\n")
+def test_pubmed_search_basic():
+    # Minimal query
+    keywords = ["corvid"]
+    extra_terms = None
+    retmax = 3
 
-    # 1. search
     ids = PubMedClient.pubmed_search(keywords, extra_terms=extra_terms, retmax=retmax)
+    assert isinstance(ids, list)
+    assert len(ids) <= retmax
+
     if not ids:
-        print("No PubMed IDs found.\n")
-        return
+        pytest.skip("No PubMed IDs returned; cannot fetch articles")
 
-    print(f"Found {len(ids)} IDs: {ids}\nFetching articles...\n")
-
-    # 2. fetch
     articles = PubMedClient.fetch_articles(ids)
+    assert isinstance(articles, list)
 
-    if not articles:
-        print("No articles could be fetched.\n")
-        return
+    required_keys = {
+        "pmid", "title", "abstract", "authors", "author_str", "doi", "pubmed_link", "stage"
+    }
 
-    # 3. print concise summaries
-    for i, art in enumerate(articles, 1):
-        print(f"--- Article {i} ---")
-        print(f"Title: {art['title']}")
-        print(f"Authors: {art['author_str']}")
-        abstract_snippet = art['abstract'][:200].replace('\n', ' ') + ('...' if len(art['abstract']) > 200 else '')
-        print(f"Abstract: {abstract_snippet}")
-        print(f"DOI: {art.get('doi', 'N/A')}")
-        print(f"PubMed link: {art.get('pubmed_link', 'N/A')}\n")
+    for art in articles:
+        assert required_keys.issubset(art.keys())
+        assert isinstance(art["authors"], list)
+        assert isinstance(art["title"], str)
+        assert art["title"] != ""
+        assert art["stage"] == "peer_reviewed"
 
-
-if __name__ == "__main__":
-    # Example queries
-    test_pubmed_search(["corvid", "crow"], extra_terms=["cognition"])
-    test_pubmed_search(["raven"], extra_terms=["tool use"])
+        # Author string logic
+        if len(art["authors"]) == 0:
+            assert art["author_str"] == "Unknown"
+        elif len(art["authors"]) == 1:
+            assert art["author_str"] == art["authors"][0]
+        else:
+            assert art["author_str"].endswith("et al.") or art["author_str"] == ", ".join(art["authors"][:2])

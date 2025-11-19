@@ -77,18 +77,23 @@ class PubMedClient:
         articles = []
         for article_elem in root.findall(".//PubmedArticle"):
             try:
-                medline = article_elem.find(".//MedlineCitation/Article")
-                pmid_elem = article_elem.find(".//MedlineCitation/PMID")
-                title_elem = medline.find("ArticleTitle") if medline is not None else None
-                abstract_elem = medline.find("Abstract/AbstractText") if medline is not None else None
-                authors, author_str = parse_authors(medline)
+                medline = article_elem.find(".//MedlineCitation")
+                if medline is None:
+                    continue
+                article_data = medline.find("Article")
+                pmid_elem = medline.find("PMID")
+                
+                title_elem = medline.find("ArticleTitle") if article_data is not None else None
+                abstract_elem = article_data.find("Abstract/AbstractText") if article_data is not None else None
+                authors, author_str = PubMedClient.parse_authors(article_data)
                 
                 articles.append({
                     "pmid": pmid_elem.text if pmid_elem is not None else None,
                     "title": title_elem.text if title_elem is not None else "Untitled",
                     "abstract": abstract_elem.text if abstract_elem is not None else "",
                     "authors": authors,
-                    "author_str": author_str
+                    "author_str": author_str,
+                    "stage": "peer_reviewed"
                 })
             except Exception:
                 continue

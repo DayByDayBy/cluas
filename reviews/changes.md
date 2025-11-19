@@ -88,3 +88,36 @@ Significant progress has been made on the API clients. The `ArxivClient` has bee
 
 -   **Concerning:**
     -   There are no concerning changes. The progress is excellent. The clear next step is to complete the `PubMedClient` by adding the `efetch` logic to retrieve full article data using the IDs from `pubmed_search`.
+
+---
+
+### November 18, 2025 (Late Afternoon)
+
+#### Summary of Changes
+
+A significant refactoring has occurred. The `PubMedClient` has been moved to a new `academic` submodule, and a robust, retry-enabled HTTP fetching utility has been created in `src/cluas_mcp/common/http.py`.
+
+#### Detailed Changes
+
+-   **New Directory `src/cluas_mcp/academic/`**:
+    -   The `PubMedClient` has been moved to `src/cluas_mcp/academic/pubmed_client.py`.
+-   **New File `src/cluas_mcp/common/http.py`**:
+    -   This file introduces a `fetch_with_retry` function that uses the `tenacity` library to provide exponential backoff for HTTP requests. This makes API calls more resilient.
+-   **Modified `src/cluas_mcp/academic/pubmed_client.py`**:
+    -   The refactored `PubMedClient` now uses the new `fetch_with_retry` utility for its API calls.
+-   **Modified `pyproject.toml`**:
+    -   The `tenacity` library has been added as a project dependency.
+-   **Modified `src/cluas_mcp/common/api_clients.py`**:
+    -   This file still contains the old `PubMedClient` code, creating duplication.
+
+#### Analysis
+
+-   **Significant:**
+    -   The architectural refactoring is highly significant. It shows a move towards a more organized, maintainable, and robust codebase, aligning with the project's planning documents. The creation of a shared, resilient HTTP utility is a major improvement.
+
+-   **Good:**
+    -   The new `http.py` module is excellent and demonstrates best practices for consuming external APIs.
+    -   The file structure is becoming cleaner and more logical.
+
+-   **Concerning:**
+    -   **Code Duplication:** The most pressing issue is the duplicated `PubMedClient` code. The old implementation in `src/cluas_mcp/common/api_clients.py` is now obsolete and should be removed to prevent confusion and future bugs. The other clients in that file should also be refactored into their own modules.

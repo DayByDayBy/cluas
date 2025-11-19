@@ -2,7 +2,7 @@ import pytest
 from src.cluas_mcp.academic.pubmed import PubMedClient
 
 def test_pubmed_search_basic():
-    # Minimal query
+    # mnml query
     keywords = ["corvid"]
     extra_terms = None
     retmax = 3
@@ -28,7 +28,7 @@ def test_pubmed_search_basic():
         assert art["title"] != ""
         assert art["stage"] == "peer_reviewed"
 
-        # Author string logic
+        # author-string logic
         if len(art["authors"]) == 0:
             assert art["author_str"] == "Unknown"
         elif len(art["authors"]) == 1:

@@ -58,3 +58,33 @@ A new `notes_etc/` directory was added, containing detailed development guides a
 
 -   **Concerning:**
     -   There are no concerning changes. The project is progressing logically and is now in a much better state than before. The next logical step is to implement the placeholder API clients.
+
+---
+
+### November 18, 2025 (Afternoon)
+
+#### Summary of Changes
+
+Significant progress has been made on the API clients. The `ArxivClient` has been fully implemented, and the `PubMedClient` now has a functional search method that retrieves article IDs. More planning documents were also added.
+
+#### Detailed Changes
+
+-   **Modified `src/cluas_mcp/common/api_clients.py`**:
+    -   **`ArxivClient`**: Now contains a full implementation. It builds a query, fetches data from the arXiv API, parses the Atom feed, and returns a list of structured dictionaries containing paper details.
+    -   **`PubMedClient`**: A `pubmed_search` method has been implemented to perform the `esearch` step of the API interaction. It correctly builds a complex query and uses a helper method `parse_id_list` to extract PubMed IDs from the XML response. The `efetch` step is not yet implemented.
+    -   **`SemanticScholarClient`**: Remains a placeholder.
+-   **New Files in `notes_etc/`**:
+    -   `possible_architecture_diagram.txt`: A more detailed architecture diagram.
+    -   `possible_project_structure.txt`: A proposed target file structure.
+    -   `exposing_cluas_as_an_MCP.py`: A code snippet showing how the app might expose MCP tools.
+
+#### Analysis
+
+-   **Significant:**
+    -   The implementation of the `ArxivClient` and the first half of the `PubMedClient` is the most significant change. This represents the first major piece of core feature development, moving the project from planning and bug-fixing into active implementation.
+
+-   **Good:**
+    -   This is a huge step in the right direction. The code is functional and well-structured. The `Corvus` agent now has a working data source (arXiv) and a partially working one (PubMed). This directly addresses the main blocker and builds momentum.
+
+-   **Concerning:**
+    -   There are no concerning changes. The progress is excellent. The clear next step is to complete the `PubMedClient` by adding the `efetch` logic to retrieve full article data using the IDs from `pubmed_search`.

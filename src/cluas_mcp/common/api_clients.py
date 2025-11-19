@@ -1,4 +1,5 @@
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from common.http import fetch_with_retry
 import requests
 import feedparser
 import xml.etree.ElementTree as ET
@@ -45,13 +46,16 @@ class PubMedClient:
         )
 
         try:
-            response = requests.get(url, timeout=10)
+            response = fetch_with_retry(url)
             response.raise_for_status()
             return PubMedClient.parse_id_list(response.text)
 
         except requests.exceptions.RequestException:
             # log instead of print, lol
             return []
+        
+
+        
 
 
 

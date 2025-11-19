@@ -1,10 +1,14 @@
 from src.cluas_mcp.academic.pubmed import PubMedClient
 
-def test_pubmed_search(keywords, extra_terms=None, retmax=5):
+def test_pubmed_search():
     """
     Lightweight test harness for PubMed.
     Prints the first `retmax` articles found for keywords + extra_terms.
     """
+    keywords=["corvid"] 
+    extra_terms=None
+    retmax=5
+    
     print(f"Searching PubMed for: {keywords} {'+' + str(extra_terms) if extra_terms else ''}\n")
 
     # 1. search

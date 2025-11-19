@@ -1,18 +1,19 @@
-from common.http import fetch_with_retry
-import requests
 import xml.etree.ElementTree as ET
 import urllib.parse
 from typing import List, Optional
 
+from cluas_mcp.common.http import fetch_with_retry
+
 class PubMedClient:
+    """Lightweight PubMed search client (ID only)."""
 
     @staticmethod
     def parse_id_list(xml: str) -> List[str]:
-        """Parse XML and return a list of PubMed IDs."""
+        """Parse PubMed ESearch XML and return a list of IDs."""
         try:
             root = ET.fromstring(xml)
         except ET.ParseError:
-            return []  # invalid XML or rate limit page
+            return []
 
         id_list = root.find(".//IdList")
         if id_list is None:
@@ -25,33 +26,36 @@ class PubMedClient:
         keywords: List[str],
         extra_terms: Optional[List[str]] = None,
         retmax: int = 20,
+        email: Optional[str] = None,  # add an email later - sort the forwarding first
+        tool: str = "cluas_mcp",
     ) -> List[str]:
-        """
-        Search PubMed for (keywords OR ...) AND (extra_terms OR ...).
-        Returns PubMed IDs.
-        """
-        # building grouped OR clauses
-        base = "(" + " OR ".join(keywords) + ")"
-        if extra_terms:
-            base = f"{base} AND ({' OR '.join(extra_terms)})"
+        """Search PubMed for (keywords OR ...) AND (extra_terms OR ...)."""
 
-        # URL-encode the full term string
+        # 1. build query
+        base = f"({' OR '.join(keywords)})"
+        if extra_terms:
+            base += f" AND ({' OR '.join(extra_terms)})"
+
         term = urllib.parse.quote(base)
 
+        # 2. build URL
         url = (
             "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
             f"?db=pubmed&term={term}&retmax={retmax}&retmode=xml"
+            f"&tool={tool}"
         )
+        if email:
+            url += f"&email={urllib.parse.quote(email)}"
 
+        # 3. fetch + parse
         try:
             response = fetch_with_retry(url)
-            response.raise_for_status()
             return PubMedClient.parse_id_list(response.text)
-
-        except requests.exceptions.RequestException:
-            # log instead of print, lol
+        except Exception:
+            # shift to logging soon
             return []
-        
 
-        
 
+
+# # Example usage:
+# ids = PubMedClient.pubmed_search(["corvid", "crow"], ["mating"])

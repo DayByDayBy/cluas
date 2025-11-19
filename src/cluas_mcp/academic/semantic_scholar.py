@@ -33,7 +33,7 @@ class SemanticScholarClient:
             try:
                 authors = [a.get("name") for a in paper.get("authors", []) if a.get("name")]
                 
-                if len(authors) == 0:
+                if  not authors:
                     author_str = "Unknown"
                 elif len(authors) == 1:
                     author_str = authors[0]

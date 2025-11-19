@@ -63,20 +63,48 @@ class ArxivClient:
 
     @staticmethod
     def _parse_entry(entry) -> Dict[str, Any]:
-        authors = [a.name for a in getattr(entry, "authors", [])] if hasattr(entry, "authors") else []
+        
+        
+        authors = [a.get("name") for a in getattr(entry, "authors", []) if a.get("name")]
+                
+        if not authors:
+            author_str = "Unknown"
+        elif len(authors) == 1:
+            author_str = authors[0]
+        elif len(authors) == 2:
+            author_str = ", ".join(authors[:2])
+        else:
+            author_str = authors[0] + " et al."
+            
         # arXiv id is usually in entry.id like "http://arxiv.org/abs/1234.56789v1"
-        arxiv_id = None
+        
         link = getattr(entry, "id", None)
-        if link:
-            arxiv_id = link.split("/")[-1]
+        arxiv_id = link.split("/")[-1] if link else None
+        
+        doi = None
+        if "arxiv_doi" in entry:
+            doi = entry["arxiv_doi"]
+        year = None
+        published = getattr(entry, "published", None)
+        if published and len(published) >= 4:
+            try:
+                year = int(published[:4])
+            except Exception:
+                pass
 
         return {
-            "title": getattr(entry, "title", ""),
-            "abstract": getattr(entry, "summary", ""),
+            "title": getattr(entry, "title", "") or "Untitled",
+            "abstract": getattr(entry, "summary", "") or "",
             "authors": authors,
+            "author_str": author_str,
+            "doi": doi,
             "link": link,
-            "arxiv_id": arxiv_id,
+            "paperId": arxiv_id,
+            "source": "arxiv",
+            "year": year,
+            "venue": "arXiv",
             "stage": "preprint",
+            "citation_count": None, # arXiv doesnt actually provide this, it's just here to match shape
         }
 
     @classmethod

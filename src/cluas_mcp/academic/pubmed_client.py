@@ -1,6 +1,4 @@
 from common.http import fetch_with_retry
-import requests
-import feedparser
 import xml.etree.ElementTree as ET
 import urllib.parse
 from typing import List, Optional

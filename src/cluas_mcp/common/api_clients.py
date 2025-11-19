@@ -1,4 +1,3 @@
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from common.http import fetch_with_retry
 import requests
 import feedparser

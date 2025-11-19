@@ -1,5 +1,8 @@
 import logging
-logging.basicConfig(level=logging.INFO)
+from src.cluas_mcp.academic.semantic_scholar import SemanticScholarClient
+from src.cluas_mcp.academic.pubmed import PubMedClient
+from src.cluas_mcp.academic.arxiv import ArxivClient
+
 logger = logging.getLogger(__name__)
 
 def academic_search(term: str) -> dict:

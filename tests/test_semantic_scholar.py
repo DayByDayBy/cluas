@@ -1,3 +1,6 @@
+from src.cluas_mcp.academic.semantic_scholar import SemanticScholarClient
+
+
 def test_semantic_scholar_search():
     results = SemanticScholarClient.search("corvid", limit=3)
     assert isinstance(results, list)
@@ -9,3 +12,5 @@ def test_semantic_scholar_search():
         assert isinstance(paper["authors"], list)
         assert isinstance(paper["title"], str)
         assert isinstance(paper["stage"], str)
+        if len(paper["authors"]) == 2:
+            assert paper["author_str"] == ", ".join(paper["authors"])

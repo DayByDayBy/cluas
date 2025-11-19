@@ -156,3 +156,33 @@ A massive and highly positive refactoring has been completed. The API clients ha
 
 -   **Concerning:**
     -   The only remaining issue is the obsolete `src/cluas_mcp/common/api_clients.py` file. It should be deleted to finalize the cleanup.
+
+---
+
+### November 18, 2025 (Night)
+
+#### Summary of Changes
+
+The final placeholder API client, `SemanticScholarClient`, has been implemented and tested. The data access layer for the `Corvus` agent is now 100% complete.
+
+#### Detailed Changes
+
+-   **`SemanticScholarClient` Implemented**:
+    -   The client in `src/cluas_mcp/academic/semantic_scholar.py` has been fully implemented. It queries the Semantic Scholar API, requests specific fields, and normalizes the response into the project's standard format.
+-   **New Test for `SemanticScholarClient`**:
+    -   A new test file, `tests/test_semantic_scholar.py`, was added to validate the new client.
+-   **`PubMedClient` Improved**:
+    -   The `pubmed.py` client was improved to extract more data (DOI, PubMed link) and includes better error handling for parsing individual articles.
+-   **Facade Renamed**:
+    -   The `academic_search.py` facade was renamed to `academic_search_entry.py`.
+
+#### Analysis
+
+-   **Significant:**
+    -   The completion of the final API client is a major milestone. The `academic_search` facade is now fully operational, capable of querying and aggregating results from all three target data sources.
+
+-   **Good:**
+    -   The project continues its excellent momentum. The practice of adding tests for all new code is being maintained, which is crucial for long-term stability. The data access layer is now a polished, production-ready component.
+
+-   **Concerning:**
+    -   There are no new concerns. The only outstanding task from the refactoring is to delete the obsolete `src/cluas_mcp/common/api_clients.py` file.

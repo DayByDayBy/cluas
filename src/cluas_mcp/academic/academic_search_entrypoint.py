@@ -14,11 +14,17 @@ def academic_search(term: str) -> dict:
         logger.warning("PubMed search failed: %s", e)
         pubmed = []
     
-    try:
-        sem_scho = SemanticScholarClient.search(term)
-    except Exception as e:
-        logger.warning("Semantic Scholar search failed: %s", e)
-        sem_scho = []
+    #  will comment out til i get the api key sorted.
+    # can alwyas comment back in if rate 
+    # hasnt been hit for the day, or else just 
+    # rely on other two for now 
+    # 
+    # try:
+    #     sem_scho = SemanticScholarClient.search(term)
+    # except Exception as e:
+    #     logger.warning("Semantic Scholar search failed: %s", e)
+    #     sem_scho = []
+    
     try:
         arxiv = ArxivClient.search(term)
     except Exception as e:
@@ -27,6 +33,6 @@ def academic_search(term: str) -> dict:
 
     return {
         "pubmed": pubmed,
-        "semantic_scholar": sem_scho,
+        # "semantic_scholar": sem_scho,
         "arxiv": arxiv,
     }

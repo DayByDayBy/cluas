@@ -24,7 +24,7 @@ def _raise_for_status(response: requests.Response) -> requests.Response:
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10),
 )
-def fetch_with_retry(url: str) -> requests.Response:
+def fetch_with_retry(url: str, headers:dict = None) -> requests.Response:
     """
     fetches a URL with retry logic suitable for academic APIs.
 
@@ -34,5 +34,5 @@ def fetch_with_retry(url: str) -> requests.Response:
       - 5xx responses
       - 429 responses
     """
-    response = requests.get(url, timeout=10)
+    response = requests.get(url, timeout=10, headers=headers or {})
     return _raise_for_status(response)

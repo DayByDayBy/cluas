@@ -68,9 +68,9 @@ it's conducting ongoing research.
 testing via pytest
 
 live API calls:
-```uv run pytest -q tests/clients```
+```uv run --prerelease=allow pytest -q tests/clients```
 non-calling tests:
-```uv run pytest -q tests/clients/non_calling```
+```uv run --prerelease=allow pytest -q tests/clients/non_calling ```
 
 
 

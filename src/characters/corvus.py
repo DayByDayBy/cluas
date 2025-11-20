@@ -1,16 +1,11 @@
 import time
 from typing import List, Optional, Dict
 from ..cluas_mcp.common.memory import AgentMemory
-from ..cluas_mcp.common.api_clients import PubMedClient, SemanticScholarClient, ArxivClient
+from ..cluas_mcp.academic.academic_search_entrypoint import academic_search
 from ..cluas_mcp.common.formatting import format_authors, snippet_abstract
 
 # init shared council memory
 memory = AgentMemory(memory_file="src/data/memory.json")
-
-# init API clients
-pubmed = PubMedClient()
-semantic = SemanticScholarClient()
-arxiv = ArxivClient()
 
 class CorvusMCP:
     """
@@ -21,8 +16,8 @@ class CorvusMCP:
     def search_papers(
         self, 
         query: str,
-        max_results: int = 5,
-        memory_days: int = 30  # optional: include recent memory items
+        max_results: int = 5, # Note: max_results is not currently passed to the facade
+        memory_days: int = 30
     ) -> List[Dict]:
         """
         Search academic papers for a query string.
@@ -37,27 +32,23 @@ class CorvusMCP:
         }
         """
 
+        # --- 1. Call the academic search facade ---
+        all_results = academic_search(query)
+        
+        # --- 2. Combine results from all sources ---
         results = []
+        for source in all_results.values():
+            results.extend(source)
 
-        # --- 1. try PubMed ---
-        results = pubmed.search(query, max_results=max_results)
-
-        # --- 2. fallback to Semantic Scholar ---
-        if not results:
-            results = semantic.search(query, max_results=max_results)
-
-        # --- 3. fallback to arXiv ---
-        if not results:
-            results = arxiv.search(query, max_results=max_results)
-
+        # --- 3. Clean, format, and log results to memory ---
         cleaned = []
-
         for r in results:
             title = r.get("title", "Untitled")
             abstract = snippet_abstract(r.get("abstract", ""))
-            authors = format_authors(r.get("authors", []))
+            # The new clients provide 'author_str' directly
+            authors = r.get("author_str") or format_authors(r.get("authors", []))
             doi = r.get("doi")
-            link = r.get("link", r.get("arxiv_link", ""))
+            link = r.get("link", r.get("arxiv_link", r.get("pubmed_link", "")))
 
             # log into memory
             memory.add_item(
@@ -65,19 +56,19 @@ class CorvusMCP:
                 doi=doi,
                 snippet=abstract,
                 mentioned_by="Corvus",
-                tags=["academic_search"]
+                tags=["academic_search", r.get("source", "unknown")]
             )
 
             cleaned.append({
                 "title": title,
                 "abstract": abstract,
                 "authors": authors,
-                "published": r.get("published", ""),
+                "published": r.get("published", r.get("year", "")),
                 "doi": doi,
                 "link": link
             })
 
-        # include recent memory items optionally
+        # --- 4. Include recent memory items optionally ---
         recent_memory = memory.get_recent(days=memory_days)
         for item in recent_memory:
             if item["title"] not in [c["title"] for c in cleaned]:

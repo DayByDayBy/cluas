@@ -187,9 +187,6 @@ class PubMedClient:
 
             if last is None:
                 continue
-
-            if fore is not None:
-                authors.append(f"{last.text}, {fore.text}")
             else:
                 authors.append(last.text)
 
@@ -202,5 +199,5 @@ class PubMedClient:
         if len(authors) == 1:
             return authors[0]
         if len(authors) == 2:
-            return ", ".join(authors[:2])
-        return authors[0] + " et al."
+            return " & ".join(authors) 
+        return authors[0] + " et al."   

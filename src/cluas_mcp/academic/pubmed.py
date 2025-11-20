@@ -72,6 +72,27 @@ class PubMedClient:
             logger.warning("PubMed search failed: %s", e)
             return []
 
+
+        # -------------------------
+        # helpers: full abstract extraction tool
+        # ---------------
+        @staticmethod
+        def _extract_abstract(article_data: ET.Element) -> str:
+            if article_data is None:
+                return ""
+            
+            abstract_elem = article_data.find("Abstract")
+            if abstract_elem is None:
+                return ""
+            
+            parts = []
+            for text_elem in abstract_elem.findall("AbstractText"):
+                if text_elem.text:
+                    parts.append(text_elem.text)
+            
+            return " ".join(parts)
+
+
     @staticmethod
     def _parse_id_list(xml_text: str) -> List[str]:
         try:
@@ -130,7 +151,7 @@ class PubMedClient:
         abstract_elem = (
             article_data.find("Abstract/AbstractText") if article_data is not None else None
         )
-        abstract = abstract_elem.text if abstract_elem is not None else ""
+        abstract = PubMedClient._extract_abstract(article_data)
 
         # Authors
         authors = PubMedClient._extract_authors(article_data)

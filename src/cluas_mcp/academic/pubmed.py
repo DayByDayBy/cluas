@@ -1,10 +1,11 @@
 #  a little more verbose than eg semantic scholar, due to how the pubmed API is set up
 #  'works the same' tho, in the sense that it outputs the same shape of dict
 
+
 import logging
 import xml.etree.ElementTree as ET
 import urllib.parse
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 from cluas_mcp.common.http import fetch_with_retry
 from cluas_mcp.domain.keywords import CORVID_KEYWORDS
@@ -72,27 +73,6 @@ class PubMedClient:
             logger.warning("PubMed search failed: %s", e)
             return []
 
-
-        # -------------------------
-        # helpers: full abstract extraction tool
-        # ---------------
-        @staticmethod
-        def _extract_abstract(article_data: ET.Element) -> str:
-            if article_data is None:
-                return ""
-            
-            abstract_elem = article_data.find("Abstract")
-            if abstract_elem is None:
-                return ""
-            
-            parts = []
-            for text_elem in abstract_elem.findall("AbstractText"):
-                if text_elem.text:
-                    parts.append(text_elem.text)
-            
-            return " ".join(parts)
-
-
     @staticmethod
     def _parse_id_list(xml_text: str) -> List[str]:
         try:
@@ -134,7 +114,9 @@ class PubMedClient:
     # -------------------------
     @staticmethod
     def _normalize_article(article_elem: ET.Element) -> Dict[str, Any]:
-
+        """
+        Transform PubMed XML into normalized dict matching Semantic Scholar format.
+        """
         # Extract core elements safely
         medline = article_elem.find(".//MedlineCitation")
         article_data = medline.find("Article") if medline is not None else None
@@ -142,32 +124,15 @@ class PubMedClient:
 
         pmid = pmid_elem.text if pmid_elem is not None else None
 
-        # Title / abstract
-        title = (
-            (article_data.find("ArticleTitle").text if article_data is not None else None)
-            or "Untitled"
-        )
-
-        abstract_elem = (
-            article_data.find("Abstract/AbstractText") if article_data is not None else None
-        )
+        # Extract all components using helper methods
+        title = PubMedClient._extract_title(article_data)
         abstract = PubMedClient._extract_abstract(article_data)
-
-        # Authors
         authors = PubMedClient._extract_authors(article_data)
         author_str = PubMedClient._make_author_str(authors)
-
-        # DOI
-        doi_elem = article_data.find(".//ELocationID[@EIdType='doi']") if article_data is not None else None
-        doi = doi_elem.text if doi_elem is not None else None
-
-        # Journal / venue
-        journal_elem = article_data.find("Journal/Title") if article_data else None
-        venue = journal_elem.text if journal_elem is not None else None
-
-        # Year
-        year_elem = article_data.find("Journal/JournalIssue/PubDate/Year") if article_data else None
-        year = int(year_elem.text) if (year_elem is not None and year_elem.text.isdigit()) else None
+        doi = PubMedClient._extract_doi(article_elem, article_data)
+        venue = PubMedClient._extract_venue(article_data)
+        year, pub_date = PubMedClient._extract_pub_date(article_data)
+        mesh_terms = PubMedClient._extract_mesh_terms(medline)
 
         return {
             "title": title,
@@ -182,42 +147,176 @@ class PubMedClient:
             "source": "pubmed",
 
             "year": year,
+            "published": pub_date,
             "venue": venue,
             "stage": "peer_reviewed",
 
             "citation_count": None,  # PubMed does not provide this
+            "mesh_terms": mesh_terms,  # PubMed-specific feature
         }
+
+    # -------------------------
+    # Extraction utilities
+    # -------------------------
+    @staticmethod
+    def _extract_title(article_data: Optional[ET.Element]) -> str:
+        """Extract article title safely."""
+        if article_data is None:
+            return "Untitled"
+        
+        title_elem = article_data.find("ArticleTitle")
+        if title_elem is not None and title_elem.text:
+            return title_elem.text
+        
+        return "Untitled"
+
+    @staticmethod
+    def _extract_abstract(article_data: Optional[ET.Element]) -> str:
+        """
+        Extract abstract, handling both simple and structured abstracts.
+        Structured abstracts have multiple AbstractText elements with labels.
+        """
+        if article_data is None:
+            return ""
+        
+        abstract_elem = article_data.find("Abstract")
+        if abstract_elem is None:
+            return ""
+        
+        # Collect all AbstractText elements
+        parts = []
+        for text_elem in abstract_elem.findall("AbstractText"):
+            if text_elem.text:
+                parts.append(text_elem.text)
+        
+        return " ".join(parts)
+
+    @staticmethod
+    def _extract_doi(
+        article_elem: ET.Element, 
+        article_data: Optional[ET.Element]
+    ) -> Optional[str]:
+        """
+        Extract DOI from multiple possible locations.
+        PubMed stores DOIs in ELocationID or ArticleIdList.
+        """
+        # Try ELocationID first (common location)
+        if article_data is not None:
+            doi_elem = article_data.find(".//ELocationID[@EIdType='doi']")
+            if doi_elem is not None and doi_elem.text:
+                return doi_elem.text
+        
+        # Try ArticleIdList in PubmedData (alternative location)
+        pubmed_data = article_elem.find(".//PubmedData")
+        if pubmed_data is not None:
+            for article_id in pubmed_data.findall(".//ArticleId"):
+                if article_id.get("IdType") == "doi" and article_id.text:
+                    return article_id.text
+        
+        return None
+
+    @staticmethod
+    def _extract_venue(article_data: Optional[ET.Element]) -> Optional[str]:
+        """Extract journal name."""
+        if article_data is None:
+            return None
+        
+        journal_elem = article_data.find("Journal/Title")
+        if journal_elem is not None and journal_elem.text:
+            return journal_elem.text
+        
+        return None
+
+    @staticmethod
+    def _extract_pub_date(
+        article_data: Optional[ET.Element]
+    ) -> Tuple[Optional[int], Optional[str]]:
+        """
+        Extract publication date information.
+        Returns (year, full_date_string).
+        """
+        if article_data is None:
+            return None, None
+        
+        pub_date = article_data.find("Journal/JournalIssue/PubDate")
+        if pub_date is None:
+            return None, None
+        
+        # Extract year
+        year_elem = pub_date.find("Year")
+        year = None
+        if year_elem is not None and year_elem.text and year_elem.text.isdigit():
+            year = int(year_elem.text)
+        
+        # Build full date string (YYYY-MM-DD or YYYY-MM or YYYY)
+        month_elem = pub_date.find("Month")
+        day_elem = pub_date.find("Day")
+        
+        date_parts = []
+        if year_elem is not None and year_elem.text:
+            date_parts.append(year_elem.text)
+        if month_elem is not None and month_elem.text:
+            date_parts.append(month_elem.text)
+        if day_elem is not None and day_elem.text:
+            date_parts.append(day_elem.text)
+        
+        date_str = "-".join(date_parts) if date_parts else None
+        
+        return year, date_str
+
+    @staticmethod
+    def _extract_mesh_terms(medline: Optional[ET.Element]) -> List[str]:
+        """
+        Extract MeSH (Medical Subject Headings) terms.
+        These are controlled vocabulary terms assigned by NCBI indexers.
+        Very useful for corvid research to filter by topics like:
+        - "Memory", "Learning", "Cognition"
+        - "Social Behavior", "Animal Communication"
+        - "Tool Use", "Problem Solving"
+        """
+        if medline is None:
+            return []
+        
+        mesh_list = medline.find(".//MeshHeadingList")
+        if mesh_list is None:
+            return []
+        
+        terms = []
+        for mesh in mesh_list.findall(".//MeshHeading"):
+            descriptor = mesh.find("DescriptorName")
+            if descriptor is not None and descriptor.text:
+                terms.append(descriptor.text)
+        
+        return terms
 
     # -------------------------
     # Author utilities
     # -------------------------
     @staticmethod
-    def _extract_authors(article_data: ET.Element) -> List[str]:
+    def _extract_authors(article_data: Optional[ET.Element]) -> List[str]:
+        """Extract author last names."""
         if article_data is None:
             return []
 
-        authors = []
         author_list = article_data.find(".//AuthorList")
         if author_list is None:
             return []
 
+        authors = []
         for author in author_list.findall("Author"):
             last = author.find("LastName")
-            fore = author.find("ForeName")
-
-            if last is None:
-                continue
-            else:
+            if last is not None and last.text:
                 authors.append(last.text)
 
         return authors
 
     @staticmethod
     def _make_author_str(authors: List[str]) -> str:
+        """Format author list for display."""
         if not authors:
             return "Unknown"
         if len(authors) == 1:
             return authors[0]
         if len(authors) == 2:
-            return " & ".join(authors) 
-        return authors[0] + " et al."   
+            return " & ".join(authors)
+        return authors[0] + " et al."

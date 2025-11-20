@@ -1,70 +1,49 @@
 import gradio as gr
-from huggingface_hub import InferenceClient
+from ..orchestrator import CouncilOrchestrator
 
+# Create a single, shared instance of the orchestrator
+orchestrator = CouncilOrchestrator()
 
-def respond(
-    message,
-    history: list[dict[str, str]],
-    system_message,
-    max_tokens,
-    temperature,
-    top_p,
-    hf_token: gr.OAuthToken,
-):
+def respond(message, history):
     """
-    For more information on `huggingface_hub` Inference API support, please check the docs: https://huggingface.co/docs/huggingface_hub/v0.22.2/en/guides/inference
+    This function is called when the user submits a message.
+    It passes the query to the orchestrator and formats the results.
     """
-    client = InferenceClient(token=hf_token.token, model="openai/gpt-oss-20b")
+    # Get the raw results from the orchestrator
+    search_results = orchestrator.process_query(message)
 
-    messages = [{"role": "system", "content": system_message}]
+    if not search_results:
+        yield "I couldn't find any relevant academic papers for that query."
+        return
 
-    messages.extend(history)
-
-    messages.append({"role": "user", "content": message})
-
-    response = ""
-
-    for message in client.chat_completion(
-        messages,
-        max_tokens=max_tokens,
-        stream=True,
-        temperature=temperature,
-        top_p=top_p,
-    ):
-        choices = message.choices
-        token = ""
-        if len(choices) and choices[0].delta.content:
-            token = choices[0].delta.content
-
-        response += token
-        yield response
+    # Format the results into a markdown string
+    response = f"I found {len(search_results)} papers related to your query:\n\n"
+    for i, paper in enumerate(search_results, 1):
+        response += f"**{i}. {paper.get('title', 'No Title')}**\n"
+        response += f"   - **Authors:** {paper.get('authors', 'N/A')}\n"
+        response += f"   - **Published:** {paper.get('published', 'N/A')}\n"
+        if paper.get('doi'):
+            response += f"   - **DOI:** {paper.get('doi')}\n"
+        if paper.get('link'):
+            response += f"   - **Link:** [Read Paper]({paper.get('link')})\n"
+        response += "\n"
+    
+    yield response
 
 
-"""
-For information on how to customize the ChatInterface, peruse the gradio docs: https://www.gradio.app/docs/chatinterface
-"""
+# Define the Gradio ChatInterface
 chatbot = gr.ChatInterface(
     respond,
-    type="messages",
-    additional_inputs=[
-        gr.Textbox(value="You are a friendly Chatbot.", label="System message"),
-        gr.Slider(minimum=1, maximum=2048, value=512, step=1, label="Max new tokens"),
-        gr.Slider(minimum=0.1, maximum=4.0, value=0.7, step=0.1, label="Temperature"),
-        gr.Slider(
-            minimum=0.1,
-            maximum=1.0,
-            value=0.95,
-            step=0.05,
-            label="Top-p (nucleus sampling)",
-        ),
-    ],
+    title="Corvid Council",
+    description="Ask a question to the council of AI crow experts. Corvus, the scholar, will search for relevant academic papers.",
+    examples=["corvid cognition", "tool use in crows", "raven social behavior"],
 )
 
-with gr.Blocks() as demo:
+# Define the main Gradio app layout
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
     with gr.Sidebar():
-        gr.LoginButton()
+        gr.Markdown("## About\nThis is a demo of the Corvid Council, a multi-agent research system. Currently, only the agent **Corvus** is active.")
     chatbot.render()
-
 
 if __name__ == "__main__":
     demo.launch()

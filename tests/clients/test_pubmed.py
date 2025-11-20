@@ -7,18 +7,15 @@ def test_pubmed_search_basic():
     extra_terms = None
     retmax = 3
 
-    ids = PubMedClient.pubmed_search(keywords, extra_terms=extra_terms, retmax=retmax)
-    assert isinstance(ids, list)
-    assert len(ids) <= retmax
+    articles = PubMedClient.pubmed_search(keywords, extra_terms=extra_terms, retmax=retmax)
+    assert isinstance(articles, list)
+    assert len(articles) <= retmax
 
-    if not ids:
+    if not articles: 
         pytest.skip("No PubMed IDs returned; cannot fetch articles")
 
-    articles = PubMedClient.fetch_articles(ids)
-    assert isinstance(articles, list)
-
     required_keys = {
-        "pmid", "title", "abstract", "authors", "author_str", "doi", "pubmed_link", "stage"
+        "source_id", "title", "abstract", "authors", "author_str", "doi", "link", "stage"
     }
 
     for art in articles:

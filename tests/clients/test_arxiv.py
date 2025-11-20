@@ -13,7 +13,7 @@ def test_arxiv_search_basic():
     if not results:
         pytest.skip("No arXiv results returned; skipping article checks")
 
-    required_keys = {"title", "abstract", "authors", "link", "arxiv_id", "stage"}
+    required_keys = {"title", "abstract", "authors", "link", "paperId","source_id", "stage"}
 
     for paper in results:
         assert required_keys.issubset(paper.keys())

@@ -137,7 +137,7 @@ class PubMedClient:
         author_str = PubMedClient._make_author_str(authors)
 
         # DOI
-        doi_elem = article_data.find(".//ELocationID[@EIdType='doi']") if article_data else None
+        doi_elem = article_data.find(".//ELocationID[@EIdType='doi']") if article_data is not None else None
         doi = doi_elem.text if doi_elem is not None else None
 
         # Journal / venue
@@ -148,7 +148,6 @@ class PubMedClient:
         year_elem = article_data.find("Journal/JournalIssue/PubDate/Year") if article_data else None
         year = int(year_elem.text) if (year_elem is not None and year_elem.text.isdigit()) else None
 
-        # Build normalized dict identical to Semantic Scholar
         return {
             "title": title,
             "abstract": abstract,
@@ -157,8 +156,8 @@ class PubMedClient:
 
             "doi": doi,
             "link": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None,
-            "pmid": pmid,
             "paperId": pmid,  # normalized name
+            "source_id": pmid,
             "source": "pubmed",
 
             "year": year,

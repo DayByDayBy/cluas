@@ -10,10 +10,10 @@ def test_arxiv_search_mock():
     fake_entry = MagicMock()
     fake_entry.title = "Corvid Tool Use in AI"
     fake_entry.summary = "This paper discusses corvid tool use in AI."
-    fake_entry.authors = fake_authors  # List of dicts, not MagicMocks
+    fake_entry.authors = fake_authors  # list of dicts, not MagicMocks
     fake_entry.id = "http://arxiv.org/abs/1234.5678v1"
     fake_entry.link = "http://arxiv.org/abs/1234.5678v1"
-    fake_entry.published = "2023-01-01"  # Required for year extraction
+    fake_entry.published = "2023-01-01"  # required for year extraction
 
     fake_feed = FeedParserDict(entries=[fake_entry])
 
@@ -25,5 +25,6 @@ def test_arxiv_search_mock():
         assert paper["title"] == "Corvid Tool Use in AI"
         assert paper["authors"] == ["Jane Doe", "John Smith"]
         assert paper["author_str"] == "Jane Doe, John Smith"
-        assert paper["paperId"] == "1234.5678v1"
+        assert paper["paperId"] is None
+        assert paper["source_id"] == "1234.5678v1"  # ie the arxiv_id
         assert paper["stage"] == "preprint"

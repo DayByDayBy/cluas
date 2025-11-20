@@ -49,6 +49,7 @@ class SemanticScholarClient:
                     "author_str": author_str,
                     "doi": paper.get("doi"), 
                     "link": paper.get("url") or f"https://www.semanticscholar.org/paper/{paper.get('paperId')}",
+                    "source_id": paper.get("paperId"),
                     "paperId": paper.get("paperId"), 
                     "source": "semantic_scholar", 
                     "year": paper.get("year"), 

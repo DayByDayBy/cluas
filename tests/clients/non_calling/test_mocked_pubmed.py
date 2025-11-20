@@ -44,7 +44,7 @@ def test_pubmed_search_with_keywords(mock_fetch):
     assert result[0]["doi"] == "10.1234/test"
     assert result[0]["venue"] == "Test Journal"
     assert result[0]["year"] == 2023
-    assert result[0]["pmid"] == "12345"
+    assert result[0]["source_id"] == "12345"
     assert result[0]["link"] == "https://pubmed.ncbi.nlm.nih.gov/12345/"
 
 def test_pubmed_search_with_extra_terms(mock_fetch):

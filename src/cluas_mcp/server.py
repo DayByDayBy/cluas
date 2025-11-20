@@ -19,7 +19,7 @@ async def list_tools() -> str:
         Tool(
             name="academic_search",
             description="Search academic papers across PubMed, Semantic Scholar, and ArXiv",
-            input_schema={
+            inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {
@@ -61,7 +61,7 @@ def format_search_results(results: dict) ->str:
             output.append(f"{i}. {paper.get('title', 'No Title')}\n")
             authors = paper.get('authors', [])
             if authors:
-                output.append(f"   Authors: {', '.join(authjors[:3])}")
+                output.append(f"   Authors: {', '.join(authors[:3])}")
             abstract = paper.get('abstract', 'No Abstract')
             if  abstract != 'No Abstract':
                 output.append(f"   Abstract: {abstract[:200]}...\n")

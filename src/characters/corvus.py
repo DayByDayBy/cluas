@@ -86,6 +86,7 @@ When discussing scientific topics, use the search tool to find relevant papers."
             model=self.model,
             messages=messages,
             tools=tools,
+            tool_choice="auto",
             temperature=0.8,
             max_tokens=150
         )

@@ -126,6 +126,7 @@ When you need current information or want to share something interesting, use yo
             model=self.model,
             messages=messages,
             tools=tools,
+            tool_choice="auto",
             temperature=0.8,
             max_tokens=150
         )

@@ -1,6 +1,7 @@
 import os
 from groq import Groq
 
+
 class Corvus:
     def __init__(self, use_groq=True):
         self.name = "Corvus"

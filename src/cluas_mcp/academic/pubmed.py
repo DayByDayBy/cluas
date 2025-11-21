@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 import urllib.parse
 from typing import List, Optional, Dict, Any, Tuple
 
-from cluas_mcp.common.http import fetch_with_retry
-from cluas_mcp.domain.keywords import CORVID_KEYWORDS
+from src.cluas_mcp.common.http import fetch_with_retry
+from src.cluas_mcp.domain.keywords import CORVID_KEYWORDS
 
 logger = logging.getLogger(__name__)
 

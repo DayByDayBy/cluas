@@ -3,6 +3,8 @@ import requests
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
+from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
+
 
 load_dotenv()
 
@@ -56,18 +58,46 @@ class Corvus:
         messages = [{"role": "system", "content": self.get_system_prompt()}]
         
         if history:
-            messages.extend(history[-5:])  # Last 5 for context
+            messages.extend(history[-5:]) # last 5 messages
         
         messages.append({"role": "user", "content": message})
+        
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": "search_academic_papers",
+                "description": "Search academic papers in PubMed, ArXiv, and Semantic Scholar",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for academic papers"
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        }]
         
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
+            tools=tools,
             temperature=0.8,
             max_tokens=150
         )
         
-        return response.choices[0].message.content.strip()
+        choice = response.choices[0]
+        
+        if choice.finish_reason == "tool_calls":
+            tool_call = choice.message.tool_calls[0]
+            if tool_call.function.name == "search_academic_papers":
+                query = tool_call.function.arguments.get("query")
+                return f"[Searching academic papers for: {query}]"
+            
+        
+        return choice.message.content.strip()
     
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use Ollama."""

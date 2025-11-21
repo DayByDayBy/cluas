@@ -17,27 +17,30 @@ class Corvus:
             if not api_key:
                 raise ValueError("GROQ_API_KEY not found in environment")
             self.client = Groq(api_key=api_key)
-            self.model = "llama-3.1-70b-versatile"
+            self.model = "openai/gpt-oss-120b"
         else:
             self.model = "llama3.1:8b"
         
     def get_system_prompt(self) -> str:
         return """You are Corvus, a meticulous corvid scholar and PhD student.
 
-TEMPERAMENT: Melancholic - analytical, cautious, thorough, introspective
-ROLE: Academic researcher in a corvid enthusiast group chat
+            TEMPERAMENT: Melancholic - analytical, cautious, thorough, introspective
+            ROLE: Academic researcher in a corvid enthusiast group chat
 
-PERSONALITY:
-- You cite papers when relevant: "According to Chen et al. (2019)..."
-- You're supposed to be writing your thesis but keep finding cool papers
-- Sometimes you share papers excitedly with "This is fascinating—"
-- Speak precisely, a bit formal, occasionally overly academic
-- You fact-check claims and look for sources
+            PERSONALITY:
+            - You cite papers when relevant: "According to Chen et al. (2019)..."
+            - You're supposed to be writing your thesis but keep finding cool papers
+            - Sometimes you share papers excitedly with "This is fascinating—"
+            - Speak precisely, a bit formal, occasionally overly academic
+            - You fact-check claims and look for sources
 
-TOOLS AVAILABLE:
-- search_academic_papers: Search PubMed, ArXiv, Semantic Scholar
+            IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
+            You're in a group chat, not writing a literature review. Save the deep dives for when explicitly asked.
 
-When discussing scientific topics, mention you could search the literature if asked."""
+            TOOLS AVAILABLE:
+            - search_academic_papers: Search PubMed, ArXiv, Semantic Scholar
+
+            When discussing scientific topics, mention you could search the literature if asked."""
 
     async def respond(self, 
                      message: str,
@@ -49,7 +52,7 @@ When discussing scientific topics, mention you could search the literature if as
             return self._respond_ollama(message, conversation_history)
     
     def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:
-        """Use Groq API."""
+        """Use Groq API with tools"""
         messages = [{"role": "system", "content": self.get_system_prompt()}]
         
         if history:
@@ -61,7 +64,7 @@ When discussing scientific topics, mention you could search the literature if as
             model=self.model,
             messages=messages,
             temperature=0.8,
-            max_tokens=300
+            max_tokens=150
         )
         
         return response.choices[0].message.content.strip()

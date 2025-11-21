@@ -8,4 +8,5 @@
 4. Built Gradio group chat interface with sequential character responses
 5. Fixed import paths: removed gradio __init__.py, fixed all src. imports, removed unsupported theme parameter
 6. Tested and verified all characters instantiate and respond correctly
+7. Migrated chat_fn to Gradio 6.x messages format with structured content blocks (per Gradio 6 migration guide)
 

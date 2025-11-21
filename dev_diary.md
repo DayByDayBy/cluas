@@ -50,6 +50,12 @@ Built `src/gradio/app.py` with:
 
 3. **Gradio API Compatibility**: `theme=gr.themes.Soft()` parameter not supported in this Gradio version. **Resolution**: Removed the theme parameter.
 
+4. **Gradio 6.x Migration**: The initial implementation used Gradio 5.x tuple format for chat history. **Resolution**: Migrated to Gradio 6.x messages format with structured content blocks:
+   - Changed from `List[Tuple[str, str]]` to `List[dict]` with `{"role": "user/assistant", "content": [{"type": "text", "text": "..."}]}`
+   - Updated `get_character_response()` to parse Gradio 6.x format and extract text from content blocks
+   - Updated `chat_fn()` to return messages in the new structured format
+   - Verified compatibility with Gradio 6.0.0-dev.4
+
 ### Testing
 - All characters instantiate successfully
 - Character responses work (stub implementations)
@@ -63,4 +69,6 @@ MVP complete and working. All placeholder tools return structured mock data. Rea
 ### Commits
 - `71f5dac` - Added character skeletons (Magpie, Raven, Crow) with placeholder tools, MCP server routes, and Gradio group chat interface
 - `1868ae1` - Fixed import paths: removed gradio __init__.py, fixed all src. imports, removed theme parameter
+- `1f44947` - Added documentation: steps_taken.md and dev_diary.md for character skeletons implementation
+- `8696667` - Migrated chat_fn to Gradio 6.x messages format with structured content blocks
 

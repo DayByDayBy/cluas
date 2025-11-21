@@ -64,11 +64,18 @@ Built `src/gradio/app.py` with:
 - No linter errors
 
 ### Status
-MVP complete and working. All placeholder tools return structured mock data. Ready for hackathon demo. Future enhancements: full tool implementations, async responses, memory functionality, tool usage indicators.
+MVP complete and working. Magpie now has full Groq integration with tool calling. Raven and Crow still have stub implementations. All placeholder tools return structured mock data. Ready for hackathon demo. Future enhancements: full tool implementations for Raven/Crow, async responses, memory functionality, tool usage indicators.
+
+### Character Integration Progress
+- ✅ **Corvus**: Full Groq integration with academic_search tool (working)
+- ✅ **Magpie**: Full Groq integration with 3 tools (search_web, find_trending_topics, get_quick_facts) - just implemented
+- ⏳ **Raven**: Stub implementation (needs Groq integration)
+- ⏳ **Crow**: Stub implementation (needs Groq integration)
 
 ### Commits
 - `71f5dac` - Added character skeletons (Magpie, Raven, Crow) with placeholder tools, MCP server routes, and Gradio group chat interface
 - `1868ae1` - Fixed import paths: removed gradio __init__.py, fixed all src. imports, removed theme parameter
 - `1f44947` - Added documentation: steps_taken.md and dev_diary.md for character skeletons implementation
 - `8696667` - Migrated chat_fn to Gradio 6.x messages format with structured content blocks
+- `28718e5` - Implemented full Groq integration for Magpie with tool calling for search_web, find_trending_topics, and get_quick_facts
 

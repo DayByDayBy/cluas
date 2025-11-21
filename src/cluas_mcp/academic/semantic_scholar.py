@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Any
-from cluas_mcp.common.http import fetch_with_retry
+from src.cluas_mcp.common.http import fetch_with_retry
 
 logger = logging.getLogger(__name__)
 

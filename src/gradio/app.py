@@ -88,7 +88,7 @@ def chat_fn(message: str, history: List[Tuple[str, str]]) -> List[Tuple[str, str
     return history
 
 # Create Gradio interface
-with gr.Blocks(title="Cluas - Corvid Council", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Cluas - Corvid Council") as demo:
     gr.Markdown("""
     # 🐦‍⬛ Cluas - Corvid Council
     ## *A gathering of guides, a council of counsels*

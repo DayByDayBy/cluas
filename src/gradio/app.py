@@ -26,13 +26,21 @@ def format_message(character_name: str, message: str) -> Tuple[str, str]:
     formatted = f"{emoji} **{character_name}**: {message}"
     return formatted, character_name
 
-async def get_character_response(character, message: str, history: List[Tuple[str, str]]) -> str:
+async def get_character_response(character, message: str, history: List) -> str:
     """Get response from a character"""
-    # Convert Gradio history format to character format
+    # Convert Gradio 6.x history format to character format
     conversation_history = []
-    for user_msg, assistant_msg in history:
-        conversation_history.append({"role": "user", "content": user_msg})
-        conversation_history.append({"role": "assistant", "content": assistant_msg})
+    for msg in history:
+        role = msg.get("role")
+        content_blocks = msg.get("content", [])
+        
+        # Extract text from content blocks
+        if content_blocks and isinstance(content_blocks, list):
+            text = content_blocks[0].get("text", "") if content_blocks else ""
+        else:
+            text = ""
+        
+        conversation_history.append({"role": role, "content": text})
     
     try:
         response = await character.respond(message, conversation_history)
@@ -40,47 +48,59 @@ async def get_character_response(character, message: str, history: List[Tuple[st
     except Exception as e:
         return f"[{character.name} encountered an error: {str(e)}]"
 
-def chat_fn(message: str, history: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+def chat_fn(message: str, history: List) -> List:
     """Handle chat messages - all 4 characters respond sequentially"""
     if not message.strip():
         return history
     
-    # Add user message to history
-    history.append((message, None))
-    
-    # Get responses from all 4 characters sequentially
-    # For MVP, we'll do this synchronously (no async handling yet)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
     try:
-        # Corvus responds first
+        # Get all responses
         corvus_response = loop.run_until_complete(
-            get_character_response(corvus, message, history[:-1])
+            get_character_response(corvus, message, history)
         )
-        corvus_formatted, _ = format_message("Corvus", corvus_response)
-        history.append((None, corvus_formatted))
-        
-        # Magpie responds
         magpie_response = loop.run_until_complete(
-            get_character_response(magpie, message, history[:-1])
+            get_character_response(magpie, message, history)
         )
-        magpie_formatted, _ = format_message("Magpie", magpie_response)
-        history.append((None, magpie_formatted))
-        
-        # Raven responds
         raven_response = loop.run_until_complete(
-            get_character_response(raven, message, history[:-1])
+            get_character_response(raven, message, history)
         )
-        raven_formatted, _ = format_message("Raven", raven_response)
-        history.append((None, raven_formatted))
-        
-        # Crow responds
         crow_response = loop.run_until_complete(
-            get_character_response(crow, message, history[:-1])
+            get_character_response(crow, message, history)
         )
+        
+        # Add user message in Gradio 6.x format
+        history.append({
+            "role": "user", 
+            "content": [{"type": "text", "text": message}]
+        })
+        
+        # Add character responses
+        corvus_formatted, _ = format_message("Corvus", corvus_response)
+        history.append({
+            "role": "assistant",
+            "content": [{"type": "text", "text": corvus_formatted}]
+        })
+        
+        magpie_formatted, _ = format_message("Magpie", magpie_response)
+        history.append({
+            "role": "assistant",
+            "content": [{"type": "text", "text": magpie_formatted}]
+        })
+        
+        raven_formatted, _ = format_message("Raven", raven_response)
+        history.append({
+            "role": "assistant",
+            "content": [{"type": "text", "text": raven_formatted}]
+        })
+        
         crow_formatted, _ = format_message("Crow", crow_response)
-        history.append((None, crow_formatted))
+        history.append({
+            "role": "assistant",
+            "content": [{"type": "text", "text": crow_formatted}]
+        })
         
     finally:
         loop.close()

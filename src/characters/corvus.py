@@ -1,4 +1,6 @@
 import os
+import json
+import asyncio
 import requests
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
@@ -12,7 +14,7 @@ class Corvus:
     def __init__(self, use_groq=True):
         self.name = "Corvus"
         self.use_groq = use_groq
-        self.tools = ["search_academic_papers"]
+        self.tools = ["academic_search"]
         
         if use_groq:
             api_key = os.getenv("GROQ_API_KEY")
@@ -40,7 +42,7 @@ class Corvus:
             You're in a group chat, not writing a literature review. Save the deep dives for when explicitly asked.
 
             TOOLS AVAILABLE:
-            - search_academic_papers: Search PubMed, ArXiv, Semantic Scholar
+            - academic_search: Search PubMed, ArXiv, Semantic Scholar
 
             When discussing scientific topics, mention you could search the literature if asked."""
 
@@ -65,7 +67,7 @@ class Corvus:
         tools = [{
             "type": "function",
             "function": {
-                "name": "search_academic_papers",
+                "name": "academic_search",
                 "description": "Search academic papers in PubMed, ArXiv, and Semantic Scholar",
                 "parameters": {
                     "type": "object",
@@ -92,8 +94,16 @@ class Corvus:
         
         if choice.finish_reason == "tool_calls":
             tool_call = choice.message.tool_calls[0]
-            if tool_call.function.name == "search_academic_papers":
-                query = tool_call.function.arguments.get("query")
+            
+            if tool_call.function.name == "academic_search":
+                args = json.loads(tool_call.function.arguments)
+                query = args.get("query")
+                
+
+                loop = asyncio.get_event_loop()
+                search_results = loop.run_in_executor(None, self.academic_search, query)   
+                tool_result = self._format_search_for_llm(search_results)
+    
                 return f"[Searching academic papers for: {query}]"
             
         

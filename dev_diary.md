@@ -45,7 +45,7 @@ Built `src/gradio/app.py` with:
    - `src/cluas_mcp/academic/pubmed.py`
    - `src/cluas_mcp/academic/arxiv.py`
    - `src/cluas_mcp/academic/thing.py`
-   
+
    **Resolution**: Fixed all imports to use consistent `src.` prefix pattern.
 
 3. **Gradio API Compatibility**: `theme=gr.themes.Soft()` parameter not supported in this Gradio version. **Resolution**: Removed the theme parameter.
@@ -55,6 +55,8 @@ Built `src/gradio/app.py` with:
    - Updated `get_character_response()` to parse Gradio 6.x format and extract text from content blocks
    - Updated `chat_fn()` to return messages in the new structured format
    - Verified compatibility with Gradio 6.0.0-dev.4
+
+5. **Groq Tool Calling Error**: "Tool choice is none, but model called a tool" (400 error). **Resolution**: Added `tool_choice="auto"` parameter to both Corvus and Magpie's Groq API calls. This allows the model to decide whether to use tools, rather than defaulting to None which rejects tool calls.
 
 ### Testing
 - All characters instantiate successfully

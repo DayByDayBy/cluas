@@ -149,6 +149,13 @@ with gr.Blocks(title="Cluas - Corvid Council") as demo:
     The Corvid Council is a multi-agent system where four specialized AI characters collaborate to answer questions.
     Each character has access to different tools and brings their unique perspective to the discussion.
     """)
+    
+    # Attribution footnote - small and unobtrusive
+    gr.Markdown("""
+    <p style="font-size: 0.7em; color: #999; text-align: center; margin-top: 2em;">
+    Data sources: <a href="https://ebird.org" style="color: #999;">eBird.org</a>, PubMed, ArXiv
+    </p>
+    """)
 
 # Export for app.py
 my_gradio_app = demo

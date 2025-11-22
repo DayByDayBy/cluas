@@ -1,7 +1,7 @@
 [project]
 name = "cluas"
 version = "0.1.0"
-description = "Add your description here"
+description = "a dialectic deliberation engine"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

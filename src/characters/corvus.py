@@ -81,7 +81,7 @@ When discussing scientific topics, use the search tool to find relevant papers."
             }
         }]
         
-        # First LLM call
+        # first LLM call
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,

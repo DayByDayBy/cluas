@@ -81,3 +81,29 @@ MVP complete and working. Magpie now has full Groq integration with tool calling
 - `8696667` - Migrated chat_fn to Gradio 6.x messages format with structured content blocks
 - `28718e5` - Implemented full Groq integration for Magpie with tool calling for search_web, find_trending_topics, and get_quick_facts
 
+
+__________
+    End-of-Day Progress Report (2025-11-21, 23:26)
+    Accomplished
+    Feature branch merged
+    Merged stable feature branch (character skeletons, MCP server tools, Gradio 6.x compatibility) into main; successfully pulled remote updates.
+    Groq integration for Magpie
+    Implemented complete Groq integration for Magpie, including tool-calling logic for all tools: search_web, find_trending_topics, get_quick_facts.
+    Added helper formatting and async support for responses.
+    Documented individual steps and committed granularly.
+    Fixed Groq API tool_use error
+    Resolved 400 error ("Tool choice is none, but model called a tool") by adding tool_choice="auto" for both Corvus and Magpie. Now both characters can call their tools from the LLM.
+    Documentation
+    Updated dev diary and steps_taken.md for each significant change.
+    Maintained clean commit history (granular, logical commits).
+    Current Status
+    Corvus & Magpie: Working Groq integration & tool calls.
+    MCP: All 10 tools listed, tool MPC routing correct.
+    Gradio Chat: All 4 characters visible, system runs.
+    Raven & Crow: Still stubs (to be upgraded).
+    No uncommitted changes; project state is stable, demo-ready for MVP.
+    Next Steps
+    Bring Raven and Crow up to parity (Groq+tools).
+    Continue UI/polish and E2E testing.
+    Prepare for next rounds of hackathon demo/test/iteration.
+________________

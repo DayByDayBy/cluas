@@ -2,12 +2,15 @@ import gradio as gr
 import logging
 import asyncio
 import html
+import re
 import itertools
 from typing import List, Tuple
 from src.characters.corvus import Corvus
 from src.characters.magpie import Magpie
 from src.characters.raven import Raven
 from src.characters.crow import Crow
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +30,16 @@ CHARACTERS = [
 ]
 
 CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _, _ in CHARACTERS}
+
+
+
+
+def parse_mentions(message: str) -> List[str] | None:
+    """Extract @CharacterName mentions. Returns None if no mentions (all respond)."""
+    pattern = r'@(Corvus|Magpie|Raven|Crow)'
+    mentions = re.findall(pattern, message, re.IGNORECASE)
+    return [m.capitalize() for m in mentions] if mentions else None
+
 
 
 def format_message(character_name: str, message: str) -> Tuple[str, str]:
@@ -78,11 +91,15 @@ async def chat_fn(message: str, history: list):
         })
     yield history
     
-    for name, emoji, char_obj, delay in CHARACTERS:
-        # Animated typing indicator
-       for i in range(4):  # 4 states: "", ".", "..", "..."
-        dots = "." * i  # Generates "", ".", "..", "..."
-        typing_msg = {
+    mentioned_chars = parse_mentions(message)
+    
+    for name, emoji, char_obj, delay, location in CHARACTERS:
+        if mentioned_chars and name not in mentioned_chars:
+            continue
+        # animated typing indicator
+        for i in range(4):  # 4 states: "", ".", "..", "..."
+            dots = "." * i  # Generates "", ".", "..", "..."
+            typing_msg = {
             "role": "assistant",
             "content": [{"type": "text", "text": f"{emoji}{dots}"}]
         }

@@ -10,7 +10,7 @@ from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
 load_dotenv()
 
 class Corvus:
-    def __init__(self, use_groq=True):
+    def __init__(self, use_groq=True, location="Glasgow, Scotland"):
         self.name = "Corvus"
         self.use_groq = use_groq
         self.tools = ["academic_search"]

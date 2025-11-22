@@ -9,7 +9,7 @@ from src.cluas_mcp.web.web_search_entrypoint import search_web, find_trending_to
 load_dotenv()
 
 class Magpie:
-    def __init__(self, use_groq=True):
+    def __init__(self, use_groq=True, location="Brooklyn, NY"):
         self.name = "Magpie"
         self.use_groq = use_groq
         self.tools = ["search_web", "find_trending_topics", "get_quick_facts"]

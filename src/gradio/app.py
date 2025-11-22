@@ -13,17 +13,17 @@ from src.characters.crow import Crow
 logger = logging.getLogger(__name__)
 
 # init all characters
-corvus = Corvus()
-magpie = Magpie()
-raven = Raven()
-crow = Crow()
+corvus = Corvus(location="Glasgow, Scotland")
+magpie = Magpie(location="Brooklyn, NY")
+raven = Raven(location="Seattle, WA")
+crow = Crow(location="Tokyo, Japan")
 
 CHARACTERS = [
-    # (name, emoji, character_instance, delay_after_response)
-    ("Corvus", "🐦‍⬛", corvus, 1.5),
-    ("Magpie", "🪶", magpie, 1.2),
-    ("Raven", "🦅", raven, 1.0),
-    ("Crow", "🕊️", crow, 1.0)
+    # (name, emoji, instance, delay, location)
+    ("Corvus", "🐦‍⬛", corvus, 1.5, "Glasgow, Scotland"),
+    ("Magpie", "🪶", magpie, 1.2, "Brooklyn, NY"),
+    ("Raven", "🦅", raven, 1.0, "Seattle, WA"),
+    ("Crow", "🕊️", crow, 1.0, "Tokyo, Japan")
 ]
 
 CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _ in CHARACTERS}
@@ -118,10 +118,10 @@ with gr.Blocks(title="cluas_huginn") as demo:
     ## *A gathering of guides, a council of counsels*
     
     Chat with the council of four corvid experts:
-    - **Corvus** 🐦‍⬛ (Melancholic - Scholar): Academic researcher
-    - **Magpie** 🪶 (Sanguine - Enthusiast): Trend-spotter and fact-finder
-    - **Raven** 🦅 (Choleric - Activist): News monitor and fact-checker
-    - **Crow** 🕊️ (Phlegmatic - Observer): Nature watcher and pattern analyzer
+    - **Corvus** 🐦‍⬛ (Glasgow, Scotland; Melancholic - Scholar): Academic researcher
+    - **Magpie** 🪶 (Brooklyn, NY; Sanguine - Enthusiast): Trend-spotter and fact-finder
+    - **Raven** 🦅 (Seattle, WA; Choleric - Activist): News monitor and fact-checker
+    - **Crow** 🕊️ (Tokyo, Japan; Phlegmatic - Observer): Nature watcher and pattern analyzer
     """)
     
     chatbot = gr.Chatbot(

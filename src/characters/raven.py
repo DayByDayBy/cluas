@@ -9,7 +9,7 @@ from src.cluas_mcp.news.news_search_entrypoint import search_news, get_environme
 load_dotenv()
 
 class Raven:
-    def __init__(self, use_groq=True):
+    def __init__(self, use_groq=True, location="Seattle, WA"):
         self.name = "Raven"
         self.use_groq = use_groq
         self.tools = ["search_news", "get_environmental_data", "verify_claim"]

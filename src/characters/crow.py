@@ -9,7 +9,7 @@ from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings,
 load_dotenv()
 
 class Crow:
-    def __init__(self, use_groq=True):
+    def __init__(self, use_groq=True, location="Tokyo, Japan"):
         self.name = "Crow"
         self.use_groq = use_groq
         self.tools = ["get_bird_sightings", "get_weather_patterns", "analyze_temporal_patterns"]

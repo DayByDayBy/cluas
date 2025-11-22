@@ -26,7 +26,7 @@ CHARACTERS = [
     ("Crow", "🕊️", crow, 1.0, "Tokyo, Japan")
 ]
 
-CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _ in CHARACTERS}
+CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _, _ in CHARACTERS}
 
 
 def format_message(character_name: str, message: str) -> Tuple[str, str]:

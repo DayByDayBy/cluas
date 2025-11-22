@@ -2,46 +2,33 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def get_bird_sightings(location: str = "global", species: str = None) -> dict:
+from src.cluas_mcp.observation.ebird import get_bird_sightings, format_sightings_for_display
+
+logger = logging.getLogger(__name__)
+
+def get_bird_sightings_tool(location: str = "HuggingFace HQ, Brooklyn, NY") -> dict:
     """
-    Get information about bird sightings.
-    
-    TODO: Implement full bird sightings functionality using a bird watching API or database.
+    Get recent bird sightings near a location.
     
     Args:
-        location: Location to get sightings for (e.g., "global", "US", "California")
-        species: Optional species filter (e.g., "corvus", "crow", "raven")
+        location: Location to search (defaults to HF HQ)
         
     Returns:
-        Dictionary with bird sighting data
+        Dictionary with sightings data
     """
-    logger.info("Getting bird sightings for location: %s, species: %s", location, species)
+    logger.info(f"Bird sightings tool called for: {location}")
     
-    # Mock structured data
+    sightings = get_bird_sightings(location)
+    formatted = format_sightings_for_display(sightings)
+    
     return {
         "location": location,
-        "species": species or "all",
-        "sightings": [
-            {
-                "species": "Corvus brachyrhynchos",
-                "common_name": "American Crow",
-                "location": location,
-                "date": "2024-01-15",
-                "observer": "Mock Observer",
-                "notes": "Mock bird sighting data. Real implementation would fetch actual sightings from a bird watching database."
-            },
-            {
-                "species": "Corvus corax",
-                "common_name": "Common Raven",
-                "location": location,
-                "date": "2024-01-14",
-                "observer": "Mock Observer",
-                "notes": "Another mock sighting for demonstration purposes."
-            }
-        ],
-        "total_sightings": 2
+        "sightings": sightings,
+        "formatted": formatted,
+        "count": len(sightings)
     }
-
+    
+    
 def get_weather_patterns(location: str = "global", timeframe: str = "recent") -> dict:
     """
     Get weather pattern data.

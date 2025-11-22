@@ -1,24 +1,33 @@
 import gradio as gr
+import logging
 import asyncio
+import html
+import itertools
 from typing import List, Tuple
 from src.characters.corvus import Corvus
 from src.characters.magpie import Magpie
 from src.characters.raven import Raven
 from src.characters.crow import Crow
 
-# Initialize all characters
+
+logger = logging.getLogger(__name__)
+
+# init all characters
 corvus = Corvus()
 magpie = Magpie()
 raven = Raven()
 crow = Crow()
 
-# Character avatars/emojis
-CHARACTER_EMOJIS = {
-    "Corvus": "🐦‍⬛",
-    "Magpie": "🪶",
-    "Raven": "🦅",
-    "Crow": "🕊️"
-}
+CHARACTERS = [
+    # (name, emoji, character_instance, delay_after_response)
+    ("Corvus", "🐦‍⬛", corvus, 1.5),
+    ("Magpie", "🪶", magpie, 1.2),
+    ("Raven", "🦅", raven, 1.0),
+    ("Crow", "🕊️", crow, 1.0)
+]
+
+CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _ in CHARACTERS}
+
 
 def format_message(character_name: str, message: str) -> Tuple[str, str]:
     """Format message with character name and emoji"""
@@ -27,14 +36,12 @@ def format_message(character_name: str, message: str) -> Tuple[str, str]:
     return formatted, character_name
 
 async def get_character_response(character, message: str, history: List) -> str:
-    """Get response from a character"""
-    # Convert Gradio 6.x history format to character format
+    """Get response from a character with graceful error handling"""
     conversation_history = []
     for msg in history:
         role = msg.get("role")
         content_blocks = msg.get("content", [])
         
-        # Extract text from content blocks
         if content_blocks and isinstance(content_blocks, list):
             text = content_blocks[0].get("text", "") if content_blocks else ""
         else:
@@ -46,71 +53,68 @@ async def get_character_response(character, message: str, history: List) -> str:
         response = await character.respond(message, conversation_history)
         return response
     except Exception as e:
-        return f"[{character.name} encountered an error: {str(e)}]"
+        logger.error(f"{character.name} error: {str(e)}")
+        
+        # Character-specific error messages
+        error_messages = {
+            "Corvus": "*pauses mid-thought, adjusting spectacles* Hmm, I seem to have lost my train of thought...",
+            "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
+            "Raven": "*scowls* The systems are down. Typical.",
+            "Crow": "*silent, gazing into the distance*"
+        }
+        return error_messages.get(character.name, f"*{character.name} seems distracted*")
 
-def chat_fn(message: str, history: List) -> List:
-    """Handle chat messages - all 4 characters respond sequentially"""
+async def chat_fn(message: str, history: list):
+    """Async chat handler with sequential responses"""
     if not message.strip():
-        return history
+        yield history
+        return
     
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    sanitized_message = html.escape(message)
     
-    try:
-        # Get all responses
-        corvus_response = loop.run_until_complete(
-            get_character_response(corvus, message, history)
-        )
-        magpie_response = loop.run_until_complete(
-            get_character_response(magpie, message, history)
-        )
-        raven_response = loop.run_until_complete(
-            get_character_response(raven, message, history)
-        )
-        crow_response = loop.run_until_complete(
-            get_character_response(crow, message, history)
-        )
-        
-        # Add user message in Gradio 6.x format
-        history.append({
-            "role": "user", 
-            "content": [{"type": "text", "text": message}]
+    history.append({
+        "role": "user",
+        "content": [{"type": "text", "text": sanitized_message}]
         })
-        
-        # Add character responses
-        corvus_formatted, _ = format_message("Corvus", corvus_response)
-        history.append({
-            "role": "assistant",
-            "content": [{"type": "text", "text": corvus_formatted}]
-        })
-        
-        magpie_formatted, _ = format_message("Magpie", magpie_response)
-        history.append({
-            "role": "assistant",
-            "content": [{"type": "text", "text": magpie_formatted}]
-        })
-        
-        raven_formatted, _ = format_message("Raven", raven_response)
-        history.append({
-            "role": "assistant",
-            "content": [{"type": "text", "text": raven_formatted}]
-        })
-        
-        crow_formatted, _ = format_message("Crow", crow_response)
-        history.append({
-            "role": "assistant",
-            "content": [{"type": "text", "text": crow_formatted}]
-        })
-        
-    finally:
-        loop.close()
+    yield history
     
-    return history
+    for name, emoji, char_obj, delay in CHARACTERS:
+        # Animated typing indicator
+       for i in range(4):  # 4 states: "", ".", "..", "..."
+        dots = "." * i  # Generates "", ".", "..", "..."
+        typing_msg = {
+            "role": "assistant",
+            "content": [{"type": "text", "text": f"{emoji}{dots}"}]
+        }
+        if i == 0:
+            history.append(typing_msg)
+        else:
+            history[-1]["content"][0]["text"] = f"{emoji}{dots}"
+        yield history
+        await asyncio.sleep(0.2)
+            
+        try:
+            response = await get_character_response(
+                char_obj, 
+                sanitized_message, 
+                history[:-1])
+            history.pop()
+            sanitized_response = html.escape(response)
+            formatted, _ = format_message(name, sanitized_response)
+            history.append({
+                "role": "assistant", 
+                "content": [{"type": "text", "text": formatted}]})
+            yield history
+            await asyncio.sleep(delay)
+        except Exception as e:
+            logger.error(f"{name} error: {e}")
+            history.pop()
+            yield history
 
-# Create Gradio interface
-with gr.Blocks(title="Cluas - Corvid Council") as demo:
+# create Gradio interface
+with gr.Blocks(title="cluas_huginn") as demo:
     gr.Markdown("""
-    # 🐦‍⬛ Cluas - Corvid Council
+    # 🐦‍⬛ cluas_huggin - a dialectic deliberation engine
     ## *A gathering of guides, a council of counsels*
     
     Chat with the council of four corvid experts:
@@ -124,7 +128,7 @@ with gr.Blocks(title="Cluas - Corvid Council") as demo:
         label="Council Discussion",
         height=600,
         show_label=True,
-        avatar_images=(None, None),  # Can add custom avatars later
+        avatar_images=(None, None),  # TODO: add custom avatars later
     )
     
     with gr.Row():
@@ -136,11 +140,22 @@ with gr.Blocks(title="Cluas - Corvid Council") as demo:
         )
         submit_btn = gr.Button("Send", variant="primary", scale=1)
     
-    # Handle submit
-    msg.submit(chat_fn, [msg, chatbot], [chatbot]).then(
+    # handle submit
+    msg.submit(
+        chat_fn, 
+        [msg, chatbot], 
+        [chatbot],
+        queue=True,
+        show_progress=True,
+    ).then(
         lambda: "", None, [msg]
     )
-    submit_btn.click(chat_fn, [msg, chatbot], [chatbot]).then(
+    submit_btn.click(
+        chat_fn, 
+        [msg, chatbot], 
+        [chatbot],
+         queue=True,
+        show_progress=True,).then(
         lambda: "", None, [msg]
     )
     
@@ -150,16 +165,16 @@ with gr.Blocks(title="Cluas - Corvid Council") as demo:
     Each character has access to different tools and brings their unique perspective to the discussion.
     """)
     
-    # Attribution footnote - small and unobtrusive
+    # attribution footnote - small and unobtrusive
     gr.Markdown("""
     <p style="font-size: 0.7em; color: #999; text-align: center; margin-top: 2em;">
     Data sources: <a href="https://ebird.org" style="color: #999;">eBird.org</a>, PubMed, ArXiv
     </p>
     """)
 
-# Export for app.py
+# xxport for app.py
 my_gradio_app = demo
 
 if __name__ == "__main__":
+    demo.queue() 
     demo.launch()
-

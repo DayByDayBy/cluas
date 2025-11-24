@@ -1,8 +1,58 @@
+import os
 import logging
+from serpapi import GoogleSearch
+
+logger = logging.getLogger(__name__)
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
 def search_news(query: str, max_results: int = 5) -> dict:
+    """
+    Search news using SerpAPI's DuckDuckGo News engine.
+    Free tier: 100 searches/month
+    """
+    api_key = os.getenv("SERPAPI_KEY")
+    
+    if not api_key:
+        logger.warning("SERPAPI_KEY not found, using mock data")
+        return _mock_news(query, max_results)
+    
+    try:
+        search = GoogleSearch({
+            "engine": "duckduckgo_news",
+            "q": query,
+            "api_key": api_key
+        })
+        
+        data = search.get_dict()
+        articles = []
+        
+        for item in data.get("news_results", [])[:max_results]:
+            articles.append({
+                "title": item.get("title", "No title"),
+                "url": item.get("link", ""),
+                "summary": item.get("snippet", ""),
+                "source": item.get("source", "Unknown"),
+                "published_date": item.get("date", "Unknown"),
+                "author": "Unknown"  # DDG News doesn't provide author
+            })
+        
+        return {
+            "articles": articles,
+            "query": query,
+            "total_results": len(articles),
+            "source": "duckduckgo_news_via_serpapi"
+        }
+    
+    except Exception as e:
+        logger.error(f"News search error: {e}")
+        return _mock_news_search(query, max_results)
+
+def _mock_news_search(query: str, max_results: int = 5) -> dict:
     """
     Search for current news articles.
     
@@ -17,7 +67,7 @@ def search_news(query: str, max_results: int = 5) -> dict:
     """
     logger.info("Starting news search for query: %s", query)
     
-    # Mock structured data matching expected real response format
+    # mock structured data matching expected real response format
     return {
         "articles": [
             {

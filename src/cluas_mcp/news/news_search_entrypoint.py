@@ -1,62 +1,15 @@
+# src/cluas_mcp/news/news_search_entrypoint.py
 import os
 import logging
 from serpapi import GoogleSearch
 
 logger = logging.getLogger(__name__)
 
-
-
-
-
-logger = logging.getLogger(__name__)
-
 def search_news(query: str, max_results: int = 5) -> dict:
     """
-    Search news using SerpAPI's DuckDuckGo News engine.
-    Free tier: 100 searches/month
-    """
-    api_key = os.getenv("SERPAPI_KEY")
-    
-    if not api_key:
-        logger.warning("SERPAPI_KEY not found, using mock data")
-        return _mock_news(query, max_results)
-    
-    try:
-        search = GoogleSearch({
-            "engine": "duckduckgo_news",
-            "q": query,
-            "api_key": api_key
-        })
-        
-        data = search.get_dict()
-        articles = []
-        
-        for item in data.get("news_results", [])[:max_results]:
-            articles.append({
-                "title": item.get("title", "No title"),
-                "url": item.get("link", ""),
-                "summary": item.get("snippet", ""),
-                "source": item.get("source", "Unknown"),
-                "published_date": item.get("date", "Unknown"),
-                "author": "Unknown"  # DDG News doesn't provide author
-            })
-        
-        return {
-            "articles": articles,
-            "query": query,
-            "total_results": len(articles),
-            "source": "duckduckgo_news_via_serpapi"
-        }
-    
-    except Exception as e:
-        logger.error(f"News search error: {e}")
-        return _mock_news_search(query, max_results)
-
-def _mock_news_search(query: str, max_results: int = 5) -> dict:
-    """
-    Search for current news articles.
-    
-    TODO: Implement full news search functionality using a news API.
+    Search news with cascading fallbacks:
+    1. Try SerpAPI DuckDuckGo News (100/month free)
+    2. Fall back to mock data
     
     Args:
         query: Search query string
@@ -65,9 +18,55 @@ def _mock_news_search(query: str, max_results: int = 5) -> dict:
     Returns:
         Dictionary with news search results
     """
-    logger.info("Starting news search for query: %s", query)
+    # Try SerpAPI DDG News
+    api_key = os.getenv("SERPAPI_KEY")
     
-    # mock structured data matching expected real response format
+    if api_key:
+        try:
+            logger.info(f"Attempting SerpAPI DDG News for: {query}")
+            return _search_news_serpapi(query, max_results, api_key)
+        except Exception as e:
+            logger.warning(f"SerpAPI DDG News failed: {e}, falling back to mock")
+    else:
+        logger.warning("SERPAPI_KEY not found, using mock data")
+    
+    # Fallback to mock
+    return _mock_news(query, max_results)
+
+
+def _search_news_serpapi(query: str, max_results: int, api_key: str) -> dict:
+    """Primary: Search using SerpAPI DuckDuckGo News"""
+    search = GoogleSearch({
+        "engine": "duckduckgo_news",
+        "q": query,
+        "api_key": api_key
+    })
+    
+    data = search.get_dict()
+    articles = []
+    
+    for item in data.get("news_results", [])[:max_results]:
+        articles.append({
+            "title": item.get("title", "No title"),
+            "url": item.get("link", ""),
+            "summary": item.get("snippet", ""),
+            "source": item.get("source", "Unknown"),
+            "published_date": item.get("date", "Unknown"),
+            "author": "Unknown"  # DDG News doesn't provide author
+        })
+    
+    return {
+        "articles": articles,
+        "query": query,
+        "total_results": len(articles),
+        "source": "duckduckgo_news_via_serpapi"
+    }
+
+
+def _mock_news(query: str, max_results: int = 5) -> dict:
+    """Fallback: Mock news data"""
+    logger.info(f"Using mock news data for query: {query}")
+    
     return {
         "articles": [
             {
@@ -88,14 +87,17 @@ def _mock_news_search(query: str, max_results: int = 5) -> dict:
             }
         ],
         "query": query,
-        "total_results": 2
+        "total_results": 2,
+        "source": "mock_data"
     }
+
 
 def get_environmental_data(location: str = "global", metric: str = "temperature") -> dict:
     """
     Get environmental data and statistics.
     
     TODO: Implement full environmental data functionality using an environmental API.
+    Currently returns mock data only.
     
     Args:
         location: Location to get data for (e.g., "global", "US", "Europe")
@@ -104,9 +106,9 @@ def get_environmental_data(location: str = "global", metric: str = "temperature"
     Returns:
         Dictionary with environmental data
     """
-    logger.info("Getting environmental data for location: %s, metric: %s", location, metric)
+    logger.info(f"Getting environmental data for location: {location}, metric: {metric}")
     
-    # Mock structured data
+    # Mock structured data (no real API available)
     return {
         "location": location,
         "metric": metric,
@@ -120,11 +122,13 @@ def get_environmental_data(location: str = "global", metric: str = "temperature"
         "source": "mock_data"
     }
 
+
 def verify_claim(claim: str) -> dict:
     """
     Verify the truthfulness of a claim.
     
     TODO: Implement full fact-checking functionality using a fact-checking API.
+    Currently returns mock data only.
     
     Args:
         claim: The claim to verify
@@ -132,9 +136,9 @@ def verify_claim(claim: str) -> dict:
     Returns:
         Dictionary with verification results
     """
-    logger.info("Verifying claim: %s", claim)
+    logger.info(f"Verifying claim: {claim}")
     
-    # Mock structured data
+    # Mock structured data (no good free fact-checking APIs available)
     return {
         "claim": claim,
         "verification_status": "unverified",
@@ -143,7 +147,3 @@ def verify_claim(claim: str) -> dict:
         "sources": [],
         "source": "mock_data"
     }
-
-
-
-

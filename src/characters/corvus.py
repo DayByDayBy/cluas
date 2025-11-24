@@ -2,19 +2,26 @@ import os
 import json
 import asyncio
 import requests
+import logging
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
+from src.cluas_mcp.common.memory import AgentMemory
 
 load_dotenv()
+logger = logging.getLogger(__name__)
+
 
 class Corvus:
+    
+   
+
     def __init__(self, use_groq=True, location="Glasgow, Scotland"):
         self.name = "Corvus"
         self.use_groq = use_groq
-        self.tools = ["academic_search"]
-        
+        self.memory = AgentMemory()
+         
         if use_groq:
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
@@ -25,37 +32,63 @@ class Corvus:
             self.model = "llama3.1:8b"
         
     def get_system_prompt(self) -> str:
-        return """You are Corvus, a meticulous corvid scholar and PhD student.
+        
+        """get system prompt with memory context"""
+        
+        recent_papers = self.memory.get_recent(days=7)
+    
+        memory_context = ""
+        if recent_papers:
+            memory_context = "\n\nRECENT DISCUSSIONS:\n"
+            memory_context += "Papers mentioned in recent conversations:\n"
+            for paper in recent_papers[:5]:  # Top 5 most recent
+                memory_context += f"- {paper['title']}"
+                if paper.get('mentioned_by'):
+                    memory_context += f" (mentioned by {paper['mentioned_by']})"
+                memory_context += "\n"
+            memory_context += "\nYou can reference these if relevant to the current discussion.\n"
+        
+        
+        corvus_base_prompt = """You are Corvus, a meticulous corvid scholar and PhD student.
 
-TEMPERAMENT: Melancholic - analytical, cautious, thorough, introspective
-ROLE: Academic researcher in a corvid enthusiast group chat
+                                TEMPERAMENT: Melancholic - analytical, cautious, thorough, introspective
+                                ROLE: Academic researcher in a corvid enthusiast group chat
 
-PERSONALITY:
-- You cite papers when relevant: "According to Chen et al. (2019)..."
-- You're supposed to be writing your thesis but keep finding cool papers your friends might like
-- Sometimes you share papers excitedly with "This is fascinating—"
-- Speak precisely, a bit formal, occasionally overly academic, some slang creeps in
-- You fact-check claims & look for sources
+                                PERSONALITY:
+                                - You cite papers when relevant: "According to Chen et al. (2019)..."
+                                - You're supposed to be writing your thesis but keep finding cool papers your friends might like
+                                - Sometimes you share papers excitedly with "This is fascinating—"
+                                - Speak precisely, a bit formal, occasionally overly academic, some slang creeps in
+                                - You fact-check claims & look for sources
 
-IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
-You're in a group chat, not writing a literature review. Save the deep dives for when explicitly asked.
+                                IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
+                                You're in a group chat, not writing a literature review. Save the deep dives for when explicitly asked.
 
-TOOLS AVAILABLE:
-- academic_search: Search PubMed, ArXiv, Semantic Scholar
+                                TOOLS AVAILABLE:
+                                - academic_search: Search PubMed, ArXiv, Semantic Scholar
 
-When discussing scientific topics, use the search tool to find relevant papers."""
+                                When discussing scientific topics, use the search tool to find relevant papers."""
+
+        return corvus_base_prompt + memory_context
 
     async def respond(self, 
                      message: str,
                      conversation_history: Optional[List[Dict]] = None) -> str:
         """Generate a response."""
         if self.use_groq:
-            return await self._respond_groq(message, conversation_history)  # Add await
+            return await self._respond_groq(message, conversation_history)  # add await
         else:
             return self._respond_ollama(message, conversation_history)
     
-    async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:  # Make async
+    async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:  # make async
         """Use Groq API with tools"""
+        
+        if "paper" in message.lower() and len(message.split()) < 10:   # maybe add oyther keywords? "or study"? "or article"?
+            recalled = self.recall_paper(message)
+        if recalled:
+            return f"Oh, I remember that one! {recalled['title']}. {recalled.get('snippet', '')} Want me to search for more details?"
+        
+        
         messages = [{"role": "system", "content": self.get_system_prompt()}]
         
         if history:
@@ -93,7 +126,7 @@ When discussing scientific topics, use the search tool to find relevant papers."
         
         choice = response.choices[0]
         
-        # Check if model wants to use tool
+        # check if model wants to use tool
         if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
             tool_call = choice.message.tool_calls[0]
             
@@ -141,9 +174,19 @@ When discussing scientific topics, use the search tool to find relevant papers."
         # No tool use, return direct response
         return choice.message.content.strip()
     
+    def recall_paper(self, query: str) -> Optional[Dict]:
+        """Try to recall a paper from memory before searching"""
+        matches = self.memory.search_title(query)
+        if matches:
+            return matches[0]  # return most relevant
+        return None
+
+
+    
     def _format_search_for_llm(self, results: dict) -> str:
         """Format search results into text for the LLM to read."""
         output = []
+        papers_saved = 0
         
         # PubMed
         pubmed = results.get("pubmed", [])
@@ -153,8 +196,24 @@ When discussing scientific topics, use the search tool to find relevant papers."
                 title = paper.get("title", "No title")
                 authors = paper.get("author_str", "Unknown authors")
                 abstract = paper.get("abstract", "")[:150]  # First 150 chars
+                
                 output.append(f"{i}. {title} by {authors}. {abstract}...")
-        
+                
+                if title != "No title":
+                    try:
+                        self.memory.add_item(
+                            title=title,
+                            doi=paper.get("doi"),
+                            snippet=abstract,
+                            mentioned_by=self.name,
+                            tags=["pubmed", "academic"]
+                            )
+                        papers_saved += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to save paper to memory: {e}")
+            output.append("")
+                
+            
         # ArXiv
         arxiv = results.get("arxiv", [])
         if arxiv:
@@ -163,10 +222,27 @@ When discussing scientific topics, use the search tool to find relevant papers."
                 title = paper.get("title", "No title")
                 authors = paper.get("author_str", "Unknown authors")
                 abstract = paper.get("abstract", "")[:150]
+                
                 output.append(f"{i}. {title} by {authors}. {abstract}...")
-        
+                    
+                if title != "No title":
+                    try:    
+                        self.memory.add_item(
+                            title=title,
+                            doi=paper.get("arxiv_id"),  # ArXiv uses arxiv_id not DOI
+                            snippet=abstract,
+                            mentioned_by=self.name,
+                            tags=["arxiv", "academic"]
+                            )
+                        papers_saved += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to save paper to memory: {e}")
+            
         if not output:
             return "No papers found for this query."
+        
+        if papers_saved > 0:
+            output.append(f"\n[Saved {papers_saved} papers to memory]")
         
         return "\n".join(output)
     

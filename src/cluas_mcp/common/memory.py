@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 
 class AgentMemory:
     """
-    A lightweight JSON-backed memory system for AI agents.
+    lightweight JSON-backed memory system for AI agents.
     Stores items with title, DOI, snippet, timestamps, and tags.
     """
 

@@ -232,8 +232,8 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
     
     # Raven tools
     elif tool_name == "search_news":
-        query = arguments.get("query")
-        if not query:
+    query = arguments.get("query")
+    if not query:
             raise ValueError("query is required for search_news")
         max_results = arguments.get("max_results", 5)
         results = await loop.run_in_executor(None, search_news, query, max_results)
@@ -268,8 +268,8 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
         timeframe = arguments.get("timeframe", "recent")
         results = await loop.run_in_executor(None, get_weather_patterns, location, timeframe)
         formatted = format_weather_patterns(results)
-        return [TextContent(type="text", text=formatted)]
-    
+    return [TextContent(type="text", text=formatted)]
+
     elif tool_name == "analyze_temporal_patterns":
         data_type = arguments.get("data_type")
         if not data_type:
@@ -325,7 +325,7 @@ def format_search_results(results: dict) -> str:
             if abstract != 'No Abstract':
                 output.append(f"   Abstract: {abstract[:200]}...\n")
             output.append("")
-        
+    
     if not output:
         return "No results found."
     

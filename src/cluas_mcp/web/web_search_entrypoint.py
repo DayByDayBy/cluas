@@ -102,3 +102,4 @@ def get_quick_facts(topic: str) -> dict:
 
 
 
+

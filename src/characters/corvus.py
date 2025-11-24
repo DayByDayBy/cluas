@@ -15,12 +15,11 @@ logger = logging.getLogger(__name__)
 
 class Corvus:
     
-   
-
     def __init__(self, use_groq=True, location="Glasgow, Scotland"):
         self.name = "Corvus"
         self.use_groq = use_groq
         self.memory = AgentMemory()
+
          
         if use_groq:
             api_key = os.getenv("GROQ_API_KEY")
@@ -71,6 +70,28 @@ class Corvus:
 
         return corvus_base_prompt + memory_context
 
+  # little bit of fuzzy for the recall:
+    
+    def recall_paper(self, query: str) -> Optional[Dict]:
+        """Try to recall a paper from memory before searching"""
+        matches = self.memory.search_title(query)
+        
+        if matches:
+            best = matches[0]
+            logger.debug(f"Recalled: {best['title']} (score: {best['relevance_score']:.2f})")           
+            return best  # return most relevant
+        
+        return None
+
+    def clear_memory(self):
+        """clears the memory (testing/fresh install purposes)"""
+        
+        self.memory.memory = {}
+        self.memory._write_memory({})
+        logger.info(f"{self.name}'s memory cleared.")
+
+
+    
     async def respond(self, 
                      message: str,
                      conversation_history: Optional[List[Dict]] = None) -> str:
@@ -85,8 +106,8 @@ class Corvus:
         
         if "paper" in message.lower() and len(message.split()) < 10:   # maybe add oyther keywords? "or study"? "or article"?
             recalled = self.recall_paper(message)
-        if recalled:
-            return f"Oh, I remember that one! {recalled['title']}. {recalled.get('snippet', '')} Want me to search for more details?"
+            if recalled:
+                return f"Oh, I remember that one! {recalled['title']}. {recalled.get('snippet', '')} Want me to search for more details?"
         
         
         messages = [{"role": "system", "content": self.get_system_prompt()}]
@@ -161,7 +182,7 @@ class Corvus:
                     "content": tool_result
                 })
                 
-                # Second LLM call with search results
+                # second LLM call with search results
                 final_response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
@@ -171,17 +192,10 @@ class Corvus:
                 
                 return final_response.choices[0].message.content.strip()
         
-        # No tool use, return direct response
+        # no tool use, return direct response
         return choice.message.content.strip()
     
-    def recall_paper(self, query: str) -> Optional[Dict]:
-        """Try to recall a paper from memory before searching"""
-        matches = self.memory.search_title(query)
-        if matches:
-            return matches[0]  # return most relevant
-        return None
-
-
+  
     
     def _format_search_for_llm(self, results: dict) -> str:
         """Format search results into text for the LLM to read."""

@@ -1,10 +1,10 @@
 ---
-title: Cluas
+title: cluas_huginn
 emoji: 💬
 colorFrom: yellow
 colorTo: purple
 sdk: gradio
-sdk_version: 5.42.0
+sdk_version: 6
 app_file: app.py
 pinned: false
 hf_oauth: true

@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
+from difflib import SequenceMatcher
+
 
 class AgentMemory:
     """
@@ -86,6 +88,33 @@ class AgentMemory:
             del self.memory[k]
         if keys_to_delete:
             self._write_memory(self.memory)
+
+def search_titl_scored(self, query: str) -> List[Dict]:
+    """Return items with relevance scores"""
+    query_lower = query.lower()
+    results = []
+    
+    for item in self.memory.values():
+        title_lower = item["title"].lower()
+        
+        similarity = SequenceMatcher(None, query_lower, title_lower).ratio()
+        
+        query_words = set(query_lower.split())
+        title_words = set(title_lower.split())
+        word_overlap = len(query_words & title_words) / len(query_words) if query_words else 0
+        
+        score = (similarity * 0.7) + (word_overlap * 0.3)
+        
+        if score > 0.2:
+           result = item.copy()
+           result['relevance_score'] = score
+           results.append(result)
+        
+        
+    results.sort(key=lambda x: x['relevance_socre'], reverse=True)
+    return results
+
+
 
 
 

@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fastmcp>=2.13.1",
     "feedparser>=6.0.12",
-    "gradio[mcp,oauth]==6.0.0.dev4",
+    "gradio[mcp,oauth]==6.0.0",
     "groq>=0.36.0",
     "mcp>=1.20.0",
     "pytest>=9.0.1",

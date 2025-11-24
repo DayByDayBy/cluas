@@ -193,5 +193,18 @@ with gr.Blocks(title="cluas_huginn") as demo:
 my_gradio_app = demo
 
 if __name__ == "__main__":
+    
+    
+    import sys
+    
+    if "--clear-memory" in sys.argv:
+        print("Clearing all character memories...")
+        corvus.clear_memory()
+        magpie.clear_memory()
+        raven.clear_memory()
+        crow.clear_memory()
+        print("Memory cleared!")
+        sys.exit(0)
+    
     demo.queue() 
     demo.launch()

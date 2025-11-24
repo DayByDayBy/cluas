@@ -74,7 +74,7 @@ class Corvus:
     
     def recall_paper(self, query: str) -> Optional[Dict]:
         """Try to recall a paper from memory before searching"""
-        matches = self.memory.search_title(query)
+        matches = self.memory.search_title_scored(query)
         
         if matches:
             best = matches[0]
@@ -215,14 +215,16 @@ class Corvus:
                 
                 if title != "No title":
                     try:
-                        self.memory.add_item(
-                            title=title,
-                            doi=paper.get("doi"),
-                            snippet=abstract,
-                            mentioned_by=self.name,
-                            tags=["pubmed", "academic"]
-                            )
-                        papers_saved += 1
+                        existing = self.memory.search_title(title)
+                        if not existing:
+                            self.memory.add_item(
+                                title=title,
+                                doi=paper.get("doi"),
+                                snippet=abstract,
+                                mentioned_by=self.name,
+                                tags=["pubmed", "academic"]
+                                )
+                            papers_saved += 1
                     except Exception as e:
                         logger.warning(f"Failed to save paper to memory: {e}")
             output.append("")

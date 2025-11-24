@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import List, Dict, Optional
 from difflib import SequenceMatcher
 
@@ -17,7 +17,7 @@ class AgentMemory:
             self._write_memory({})
         self.memory = self._read_memory()
 
-    # --- Internal file operations ---
+    # --- internal file operations ---
     def _read_memory(self) -> Dict:
         with open(self.memory_file, "r") as f:
             return json.load(f)
@@ -26,7 +26,7 @@ class AgentMemory:
         with open(self.memory_file, "w") as f:
             json.dump(data, f, indent=2)
 
-    # --- Memory operations ---
+    # --- memory operations ---
     def add_item(
         self, 
         title: str,
@@ -35,7 +35,7 @@ class AgentMemory:
         mentioned_by: Optional[str] = None,
         tags: Optional[List[str]] = None
     ):
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         key = title.lower()  # simple key by title
         if key in self.memory:
             # update last referenced timestamp
@@ -54,7 +54,7 @@ class AgentMemory:
 
     def get_recent(self, days: int = 7) -> List[Dict]:
         """Return items mentioned in the last `days`."""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         recent = [
             item for item in self.memory.values()
             if datetime.fromisoformat(item["last_referenced"]) >= cutoff
@@ -79,7 +79,7 @@ class AgentMemory:
 
     def prune_long_term(self, older_than_days: int = 365):
         """Optionally prune memory items older than `older_than_days`."""
-        cutoff = datetime.utcnow() - timedelta(days=older_than_days)
+        cutoff = datetime.now(UTC).isoformat() - timedelta(days=older_than_days)
         keys_to_delete = [
             k for k, v in self.memory.items()
             if datetime.fromisoformat(v["first_mentioned"]) < cutoff
@@ -89,30 +89,30 @@ class AgentMemory:
         if keys_to_delete:
             self._write_memory(self.memory)
 
-def search_titl_scored(self, query: str) -> List[Dict]:
-    """Return items with relevance scores"""
-    query_lower = query.lower()
-    results = []
-    
-    for item in self.memory.values():
-        title_lower = item["title"].lower()
+    def search_title_scored(self, query: str) -> List[Dict]:
+        """Return items with relevance scores"""
+        query_lower = query.lower()
+        results = []
         
-        similarity = SequenceMatcher(None, query_lower, title_lower).ratio()
-        
-        query_words = set(query_lower.split())
-        title_words = set(title_lower.split())
-        word_overlap = len(query_words & title_words) / len(query_words) if query_words else 0
-        
-        score = (similarity * 0.7) + (word_overlap * 0.3)
-        
-        if score > 0.2:
-           result = item.copy()
-           result['relevance_score'] = score
-           results.append(result)
-        
-        
-    results.sort(key=lambda x: x['relevance_socre'], reverse=True)
-    return results
+        for item in self.memory.values():
+            title_lower = item["title"].lower()
+            
+            similarity = SequenceMatcher(None, query_lower, title_lower).ratio()
+            
+            query_words = set(query_lower.split())
+            title_words = set(title_lower.split())
+            word_overlap = len(query_words & title_words) / len(query_words) if query_words else 0
+            
+            score = (similarity * 0.7) + (word_overlap * 0.3)
+            
+            if score > 0.2:
+                result = item.copy()
+                result['relevance_score'] = score
+                results.append(result)
+                
+            
+        results.sort(key=lambda x: x['relevance_score'], reverse=True)
+        return results
 
 
 

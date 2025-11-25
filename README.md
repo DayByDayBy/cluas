@@ -3,9 +3,7 @@ title: cluas_huginn
 emoji: 💬
 colorFrom: yellow
 colorTo: purple
-sdk: gradio
-sdk_version: "6.0.0"
-app_file: app.py
+docker: true
 pinned: false
 hf_oauth: true
 hf_oauth_scopes:

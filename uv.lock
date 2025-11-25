@@ -323,6 +323,7 @@ dependencies = [
     { name = "duckduckgo-search" },
     { name = "fastmcp" },
     { name = "feedparser" },
+    { name = "google-search-results" },
     { name = "gradio", extra = ["mcp", "oauth"] },
     { name = "groq" },
     { name = "mcp" },
@@ -344,6 +345,7 @@ requires-dist = [
     { name = "duckduckgo-search", specifier = ">=8.1.1" },
     { name = "fastmcp", specifier = ">=2.13.1" },
     { name = "feedparser", specifier = ">=6.0.12" },
+    { name = "google-search-results", specifier = ">=2.4.2" },
     { name = "gradio", extras = ["mcp", "oauth"], specifier = "==6.0.0" },
     { name = "groq", specifier = ">=0.36.0" },
     { name = "mcp", specifier = ">=1.20.0" },
@@ -591,6 +593,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/24/7f/2747c0d332b9acfa7
 wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/02/a6b21098b1d5d6249b7c5ab69dde30108a71e4e819d4a9778f1de1d5b70d/fsspec-2025.10.0-py3-none-any.whl", hash = "sha256:7c7712353ae7d875407f97715f0e1ffcc21e33d5b24556cb1e090ae9409ec61d", size = 200966, upload-time = "2025-10-30T14:58:42.53Z" },
 ]
+
+[[package]]
+name = "google-search-results"
+version = "2.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/77/30/b3a6f6a2e00f8153549c2fa345c58ae1ce8e5f3153c2fe0484d444c3abcb/google_search_results-2.4.2.tar.gz", hash = "sha256:603a30ecae2af8e600b22635757a6df275dad4b934f975e67878ccd640b78245", size = 18818, upload-time = "2023-03-10T11:13:09.953Z" }
 
 [[package]]
 name = "gradio"

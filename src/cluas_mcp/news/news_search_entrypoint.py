@@ -1,4 +1,3 @@
-# src/cluas_mcp/news/news_search_entrypoint.py
 import os
 import logging
 from serpapi import GoogleSearch

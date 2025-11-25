@@ -3,7 +3,7 @@ from src.cluas_mcp.observation.ebird import get_bird_sightings, format_sightings
 
 logger = logging.getLogger(__name__)
 
-def get_bird_sightings_tool(location: str = "HuggingFace HQ, Brooklyn, NY") -> dict:
+def get_bird_sightings(location: str = "HuggingFace HQ, Brooklyn, NY") -> dict:
     """
     Get recent bird sightings near a location.
     
@@ -87,3 +87,4 @@ def analyze_temporal_patterns(data_type: str, location: str = "global") -> dict:
         "time_range": "2023-01-01 to 2024-01-15",
         "source": "mock_data"
     }
+

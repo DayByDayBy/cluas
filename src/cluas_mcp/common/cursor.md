@@ -7,8 +7,6 @@ Shared helpers: http, cache, memory, formatting.
 - Preserve helper interfaces.
 
 # Important files
-- api_clients.py
-- cache.py
 - formatting.py
 - http.py
 - memory.py

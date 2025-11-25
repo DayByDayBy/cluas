@@ -1,6 +1,6 @@
 import os
 import logging
-from serpapi import GoogleSearch
+from serpapi.google_search import GoogleSearch
 
 logger = logging.getLogger(__name__)
 

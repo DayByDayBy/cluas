@@ -8,7 +8,7 @@ DEFAULT_LAT = 40.7041
 DEFAULT_LNG = -73.9867
 DEFAULT_REGION = "US-NY-047"  # Brooklyn, NY
 
-def get_bird_sightings(location: str = None, max_results: int = 10) -> List[Dict[str, Any]]:
+def fetch_bird_sightings(location: str = None, max_results: int = 10) -> List[Dict[str, Any]]:
     """
     Get recent bird sightings near a location.
     

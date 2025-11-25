@@ -1,5 +1,5 @@
 import logging
-from src.cluas_mcp.observation.ebird import get_bird_sightings, format_sightings_for_display
+from src.cluas_mcp.observation.ebird import fetch_bird_sightings, format_sightings_for_display
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ def get_bird_sightings(location: str = "HuggingFace HQ, Brooklyn, NY") -> dict:
     """
     logger.info(f"Bird sightings tool called for: {location}")
     
-    sightings = get_bird_sightings(location)
+    sightings = fetch_bird_sightings(location)
     formatted = format_sightings_for_display(sightings)
     
     return {

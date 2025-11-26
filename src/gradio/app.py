@@ -2,9 +2,10 @@ import gradio as gr
 import logging
 import asyncio
 import html
+import random
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 from src.characters.corvus import Corvus
 from src.characters.magpie import Magpie
 from src.characters.raven import Raven
@@ -28,6 +29,25 @@ CHARACTERS = [
     ("Raven", "🦅", raven, 1.0, "Seattle, WA"),
     ("Crow", "🕊️", crow, 1.0, "Tokyo, Japan")
 ]
+
+CHARACTER_PERSONAS: Dict[str, Dict[str, str]] = {
+    "Corvus": {
+        "role": "Melancholic scholar focused on academic rigor",
+        "tone": "Precise, evidence-driven, cites papers when relevant.",
+    },
+    "Magpie": {
+        "role": "Sanguine trendspotter tracking cultural signals",
+        "tone": "Upbeat, curious, highlights emerging stories and trivia.",
+    },
+    "Raven": {
+        "role": "Choleric activist monitoring news and accountability",
+        "tone": "Direct, justice-oriented, challenges misinformation.",
+    },
+    "Crow": {
+        "role": "Phlegmatic observer studying patterns in nature",
+        "tone": "Calm, methodical, references environmental signals.",
+    },
+}
 
 CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _, _ in CHARACTERS}
 
@@ -143,6 +163,217 @@ async def chat_fn(message: str, history: list):
             history.pop()
             yield history
 
+
+def _phase_instruction(phase: str) -> str:
+    instructions = {
+        "thesis": "Present your initial perspective. Offer concrete signals, data, or references that support your stance.",
+        "antithesis": "Critique or challenge earlier answers. Highlight blind spots, weak evidence, or alternative interpretations.",
+        "synthesis": "Integrate the best ideas so far. Resolve tensions and propose a balanced, actionable view.",
+    }
+    return instructions.get(phase, "")
+
+
+def _build_phase_prompt(
+    *,
+    phase: str,
+    character_name: str,
+    location: str,
+    question: str,
+    history_snippet: str,
+) -> str:
+    persona = CHARACTER_PERSONAS.get(character_name, {})
+    role = persona.get("role", "council member")
+    tone = persona.get("tone", "")
+    phase_text = _phase_instruction(phase)
+    history_block = history_snippet or "No prior discussion yet."
+
+    return (
+        f"You are {character_name}, {role} based in {location}. {tone}\n"
+        f"PHASE: {phase.upper()}.\n"
+        f"INSTRUCTION: {phase_text}\n\n"
+        f"QUESTION / CONTEXT:\n{question}\n\n"
+        f"RECENT COUNCIL NOTES:\n{history_block}\n\n"
+        "Respond as a short chat message (2-4 sentences)."
+    )
+
+
+def _history_text(history: List[str], limit: int = 12) -> str:
+    if not history:
+        return ""
+    return "\n".join(history[-limit:])
+
+
+async def _neutral_summary(history_text: str) -> str:
+    if not history_text.strip():
+        return "No discussion available to summarize."
+    prompt = (
+        "You are the neutral moderator of the Corvid Council. "
+        "Summarize the key points, agreements, and disagreements succinctly.\n\n"
+        f"TRANSCRIPT:\n{history_text}"
+    )
+    return await get_character_response(corvus, prompt, [])
+
+
+async def _summarize_cycle(history_text: str) -> str:
+    prompt = (
+        "Provide a concise recap (3 sentences max) capturing the thesis, antithesis, "
+        "and synthesis highlights from the transcript below.\n\n"
+        f"{history_text}"
+    )
+    return await get_character_response(corvus, prompt, [])
+
+
+async def deliberate(
+    question: str,
+    rounds: int = 1,
+    summariser: str = "moderator",
+    format: Literal["llm", "chat"] = "llm",
+    structure: Literal["nested", "flat"] = "nested",
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Run a dialectic deliberation (thesis → antithesis → synthesis) with the Corvid Council.
+
+    Args:
+        question: Topic to deliberate on.
+        rounds: Number of full cycles (thesis/antithesis/synthesis). Each cycle deepens the analysis.
+        summariser: "moderator" for neutral summary or one of the characters ("Corvus", ...).
+        format: "llm" returns plain text history, "chat" returns display-ready HTML snippets.
+        structure: "nested" groups responses by phase, "flat" returns a chronological list.
+        seed: Optional seed to reproduce character ordering.
+
+    Returns:
+        Structured dict containing per-phase responses, cycle summaries, and final outcome.
+    """
+    question = question.strip()
+    if not question:
+        raise ValueError("Question is required for deliberation.")
+
+    rounds = max(1, min(rounds, 5))
+    rng = random.Random(seed)
+    if seed is None:
+        seed = rng.randint(0, 1_000_000)
+        rng.seed(seed)
+
+    char_order = CHARACTERS.copy()
+    rng.shuffle(char_order)
+    order_names = [name for name, *_ in char_order]
+
+    conversation_llm: List[str] = []
+    chat_history: List[Dict[str, Any]] = []
+    phase_records: Dict[str, List[Dict[str, Any]]] = {
+        "thesis": [],
+        "antithesis": [],
+        "synthesis": [],
+    }
+    flattened_records: List[Dict[str, Any]] = []
+    cycle_summaries: List[Dict[str, Any]] = []
+
+    async def run_phase(phase: str, base_context: str, cycle_idx: int) -> List[Dict[str, Any]]:
+        history_excerpt = _history_text(conversation_llm)
+        prompts = []
+        tasks = []
+        for name, _, character, _, location in char_order:
+            prompt = _build_phase_prompt(
+                phase=phase,
+                character_name=name,
+                location=location,
+                question=base_context,
+                history_snippet=history_excerpt,
+            )
+            prompts.append((name, prompt))
+            tasks.append(get_character_response(character, prompt, []))
+
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+        entries: List[Dict[str, Any]] = []
+
+        for (name, prompt), response in zip(prompts, responses):
+            if isinstance(response, Exception):
+                logger.error("Phase %s: %s failed (%s)", phase, name, response)
+                text = f"*{name} could not respond.*"
+            else:
+                text = response.strip()
+
+            conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
+            display_text = html.escape(text)
+            formatted, _ = format_message(name, display_text)
+            chat_entry = {"role": "assistant", "content": [{"type": "text", "text": formatted}]}
+            chat_history.append(chat_entry)
+
+            entry = {
+                "cycle": cycle_idx + 1,
+                "phase": phase,
+                "name": name,
+                "content": text,
+                "prompt": prompt,
+            }
+            phase_records[phase].append(entry)
+            flattened_records.append(entry)
+            entries.append(entry)
+
+        return entries
+
+    cycle_context = question
+
+    for cycle_idx in range(rounds):
+        thesis_entries = await run_phase("thesis", cycle_context, cycle_idx)
+        antithesis_entries = await run_phase("antithesis", cycle_context, cycle_idx)
+        synthesis_entries = await run_phase("synthesis", cycle_context, cycle_idx)
+
+        cycle_text = _history_text(conversation_llm, limit=36)
+        summary_text = await _summarize_cycle(cycle_text)
+        cycle_summaries.append({
+            "cycle": cycle_idx + 1,
+            "summary": summary_text,
+        })
+        cycle_context = f"{question}\n\nPrevious cycle summary:\n{summary_text}"
+
+    full_history_text = "\n".join(conversation_llm)
+    summariser_normalized = summariser.strip().lower()
+
+    if summariser_normalized == "moderator":
+        final_summary = await _neutral_summary(full_history_text)
+        summary_author = "Moderator"
+    else:
+        name_map = {name.lower(): char for name, _, char, _, _ in CHARACTERS}
+        selected = name_map.get(summariser_normalized)
+        if not selected:
+            raise ValueError(f"Unknown summariser '{summariser}'. Choose moderator or one of: {', '.join(order_names)}.")
+        summary_prompt = (
+            "Provide a concise synthesis (3 sentences max) from your perspective, referencing the discussion below.\n\n"
+            f"{full_history_text}"
+        )
+        final_summary = await get_character_response(selected, summary_prompt, [])
+        summary_author = summariser.title()
+
+    history_output: List[Any]
+    if format == "chat":
+        history_output = chat_history
+    else:
+        history_output = conversation_llm
+
+    if structure == "nested":
+        phase_output: Dict[str, Any] = phase_records
+    else:
+        phase_output = flattened_records
+
+    return {
+        "question": question,
+        "rounds": rounds,
+        "seed": seed,
+        "character_order": order_names,
+        "structure": structure,
+        "format": format,
+        "phases": phase_output,
+        "cycle_summaries": cycle_summaries,
+        "final_summary": {
+            "by": summary_author,
+            "content": final_summary,
+        },
+        "history": history_output,
+    }
+
+
 # create Gradio interface
 with gr.Blocks(title="Cluas Huginn", theme=gr.themes.Base(theme="dark")) as demo:
 
@@ -208,6 +439,11 @@ with gr.Blocks(title="Cluas Huginn", theme=gr.themes.Base(theme="dark")) as demo
     Data sources: <a href="https://ebird.org" style="color: #999;">eBird.org</a>, PubMed, ArXiv
     </p>
     """)
+
+    gr.api(
+        deliberate,
+        api_name="deliberate",
+    )
 
 # xxport for app.py
 my_gradio_app = demo

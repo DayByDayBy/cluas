@@ -74,7 +74,7 @@ def _mock_search_web(query: str) -> dict:
         "total_results": 2
     }
 
-def find_trending_topics(category: str = "general") -> dict:
+def fetch_trending(category: str = "general") -> dict:
     """
     Find trending topics in a given category.
     

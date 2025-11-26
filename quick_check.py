@@ -1,4 +1,4 @@
-from src.cluas_mcp.common.memory import AgentMemory
+from src.cluas_mcp.common.paper_memory import AgentMemory
 
 # scored search
 memory = AgentMemory()

@@ -7,7 +7,8 @@ from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
-from src.cluas_mcp.common.memory import AgentMemory
+from src.cluas_mcp.common.paper_memory import PaperMemory
+from src.cluas_mcp.common.observation_memory import ObservationMemory
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -18,7 +19,8 @@ class Corvus:
     def __init__(self, use_groq=True, location="Glasgow, Scotland"):
         self.name = "Corvus"
         self.use_groq = use_groq
-        self.memory = AgentMemory()
+        self.paper_memory = PaperMemory() 
+        self.observation_memory = ObservationMemory(location=location)
 
          
         if use_groq:

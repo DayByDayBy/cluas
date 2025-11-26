@@ -6,7 +6,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
-from src.cluas_mcp.web.web_search_entrypoint import search_web, find_trending_topics, get_quick_facts
+from src.cluas_mcp.web.web_search import search_web, find_trending_topics, get_quick_facts
 from src.cluas_mcp.news.news_search_entrypoint import search_news, get_environmental_data, verify_claim
 from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
 

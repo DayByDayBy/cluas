@@ -3,16 +3,21 @@ import json
 import asyncio
 import requests
 import logging
-from typing import Optional, List, Dict
+from datetime import datetime, UTC
+from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from groq import Groq
 from src.cluas_mcp.observation.observation_entrypoint import (
     get_bird_sightings, 
     get_weather_patterns, 
     get_air_quality, 
-    get_moon_phase,  # note: matches entrypoint function name
-    get_sun_times
+    get_moon_phase,
+    get_sun_times,
+    analyze_temporal_patterns
 )
+from src.cluas_mcp.common.observation_memory import ObservationMemory
+from src.cluas_mcp.common.paper_memory import PaperMemory
+
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -24,6 +29,8 @@ class Crow:
         self.name = "Crow"
         self.use_groq = use_groq
         self.location = location  # crow's home location
+        self.observation_memory = ObservationMemory()
+        self.paper_memory = PaperMemory()
         
         # map tool names to functions for dispatch
         self.tool_functions = {
@@ -32,6 +39,7 @@ class Crow:
             "get_air_quality": get_air_quality,
             "get_moon_phase": get_moon_phase,
             "get_sun_times": get_sun_times,
+            "analyze_temporal_patterns": analyze_temporal_patterns
         }
         
         if use_groq:
@@ -44,7 +52,7 @@ class Crow:
             self.model = "llama3.1:8b"
         
     def get_system_prompt(self) -> str:
-        return f"""You are Crow, a calm and observant nature watcher based in {self.location}.
+        base_prompt = f"""You are Crow, a calm and observant nature watcher based in {self.location}.
 
 TEMPERAMENT: Phlegmatic - calm, observant, methodical, detail-oriented, patient
 ROLE: Observer and pattern analyzer in a corvid enthusiast group chat
@@ -69,6 +77,32 @@ TOOLS AVAILABLE:
 - get_sun_times: Get sunrise/sunset times for a location
 
 When discussing weather, birds, air quality, or natural patterns, use your tools to get real data!"""
+        return base_prompt + self._build_recent_observation_context()
+
+    def _build_recent_observation_context(self) -> str:
+        """Summarize recent observations for extra context in the system prompt."""
+        try:
+            recent = self.memory.get_recent(days=3)
+        except Exception as exc:
+            logger.warning("Unable to load recent observations: %s", exc)
+            return ""
+
+        if not recent:
+            return ""
+
+        counts: Dict[str, int] = {}
+        for obs in recent:
+            obs_type = obs.get("type", "observation")
+            counts[obs_type] = counts.get(obs_type, 0) + 1
+
+        summary_lines = [
+            "\n\nRECENT OBSERVATIONS:",
+            f"You have logged {len(recent)} observations in the last 3 days:"
+        ]
+        for obs_type, count in sorted(counts.items()):
+            summary_lines.append(f"- {count} × {obs_type}")
+
+        return "\n".join(summary_lines) + "\n"
 
     async def respond(self, 
                      message: str,
@@ -215,6 +249,9 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
                 tool_func = self.tool_functions[tool_name]
                 tool_result = await loop.run_in_executor(None, lambda: tool_func(**args))
                 
+                # persist what Crow observed for later pattern analysis
+                self._record_observation(tool_name, args, tool_result, message)
+                
                 # format results for LLM
                 formatted_result = self._format_observation_for_llm(tool_name, tool_result)
                 
@@ -300,6 +337,91 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
         
         # fallback: return JSON summary
         return json.dumps(result, indent=2)[:500]
+
+    def _record_observation(self, tool_name: str, args: Dict[str, Any], result: Dict[str, Any], user_message: str) -> None:
+        """Persist the tool result to Crow's observation memory."""
+        try:
+            location = args.get("location") or args.get("city") or self.location
+            obs_type = tool_name.replace("get_", "")
+            tags = [obs_type]
+
+            hour = datetime.now(UTC).hour
+            if 5 <= hour < 12:
+                tags.append("morning")
+            elif 12 <= hour < 17:
+                tags.append("afternoon")
+            elif 17 <= hour < 21:
+                tags.append("evening")
+            else:
+                tags.append("night")
+
+            conditions = self._derive_conditions(tool_name, result)
+            notes = f"Triggered by: {user_message[:120]}"
+
+            self.memory.add_observation(
+                obs_type=obs_type,
+                location=location,
+                data=result,
+                conditions=conditions,
+                tags=tags,
+                notes=notes
+            )
+        except Exception as exc:
+            logger.warning("Failed to store %s observation: %s", tool_name, exc)
+
+    def _derive_conditions(self, tool_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract comparable condition data from observation payloads."""
+        if tool_name == "get_weather_patterns":
+            patterns = data.get("patterns", {})
+            return {
+                "weather": patterns.get("conditions") or patterns.get("description"),
+                "temperature": patterns.get("average_temperature"),
+                "humidity": patterns.get("humidity"),
+                "wind_speed": patterns.get("wind_speed"),
+            }
+
+        if tool_name == "get_air_quality":
+            readings: List[float] = []
+            for location in data.get("locations", []):
+                measurements = location.get("measurements") or []
+                if measurements:
+                    latest = measurements[0]
+                    value = latest.get("value")
+                    if isinstance(value, (int, float)):
+                        readings.append(float(value))
+            avg_reading = round(sum(readings) / len(readings), 2) if readings else None
+            return {
+                "air_quality": avg_reading,
+                "parameter": data.get("parameter"),
+            }
+
+        if tool_name == "get_bird_sightings":
+            return {
+                "bird_count": data.get("count"),
+            }
+
+        if tool_name == "get_moon_phase":
+            return {
+                "moon_phase": data.get("phase"),
+                "illumination": data.get("illumination"),
+            }
+
+        if tool_name == "get_sun_times":
+            return {
+                "sunrise": data.get("sunrise"),
+                "sunset": data.get("sunset"),
+            }
+
+        return {}
+
+
+    def recall_observations(self, obs_type: str, days: int = 7) -> List[Dict]:
+        """Fetch recent observations of a particular type."""
+        return self.memory.search_observations(obs_type=obs_type, days=days)
+
+    def clear_memory(self) -> None:
+        """Reset Crow's observation memory (useful for tests)."""
+        self.memory.clear_all()
     
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use Ollama (no tool support, conversational only)."""

@@ -5,6 +5,7 @@ from src.cluas_mcp.observation.weather import fetch_weather_patterns
 from src.cluas_mcp.observation.airquality import fetch_air_quality
 from src.cluas_mcp.observation.moon_phase import fetch_moon_phase
 from src.cluas_mcp.observation.sunrise_sunset import fetch_sunrise_sunset
+from src.cluas_mcp.common.observation_memory import ObservationMemory
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,10 @@ def get_sun_times(location: str, date: Optional[str] = None) -> dict:
     logger.info(f"Getting sun times for {location}, date: {date}")
     return fetch_sunrise_sunset(location, date)
 
+def analyze_temporal_patterns(obs_type: str, location: Optional[str] = None, days: int = 30) -> dict:
+    """Analyze patterns from stored observations."""
+    memory = ObservationMemory(location=location)
+    return memory.analyze_patterns(obs_type, location, days)
 
 # def analyze_temporal_patterns(data_type: str, location: str = "global") -> dict:
 #     """

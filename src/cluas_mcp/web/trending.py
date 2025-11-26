@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def find_trending_topics(category: str = "general") -> dict:
+def fetch_trends(category: str = "general") -> dict:
     """
     Get trending topics with cascading fallbacks:
     1. Try Google Trends (pytrends) - no API key needed

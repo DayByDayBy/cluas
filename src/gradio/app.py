@@ -3,7 +3,6 @@ import logging
 import asyncio
 import html
 import re
-import itertools
 from pathlib import Path
 from typing import List, Tuple
 from src.characters.corvus import Corvus
@@ -145,23 +144,42 @@ async def chat_fn(message: str, history: list):
             yield history
 
 # create Gradio interface
-with gr.Blocks(title="cluas_huginn") as demo:
+with gr.Blocks(title="Cluas Huginn", theme=gr.themes.Base(theme="dark")) as demo:
+
+    # Branding / tagline
     gr.Markdown("""
-    # 🐦‍⬛ cluas_huggin - a dialectic deliberation engine
-    ## *A gathering of guides, a council of counsels*""")
-    
+    <div style="text-align:center; color:#ccc;">
+        <h1>🐦‍⬛ Cluas Huginn</h1>
+        <p><i>A gathering of guides, a council of counsels</i></p>
+        <p>Chat with the council of four corvid experts</p>
+    </div>
+    """)
+
+    # Optional accordion for full character bios
+    with gr.Accordion("Character Bios", open=False):
+        bio_lines = "\n".join([
+            f"- **{name}** {emoji}: {location}" 
+            for name, emoji, _, _, location in CHARACTERS
+        ])
+        gr.Markdown(bio_lines)
+
+    # Load avatars dynamically from folder
     avatar_folder = Path("avatars")
-    avatar_images = [str(avatar_folder / f"{name.lower()}.png") for name, *_ in CHARACTERS]
-    
+    avatar_images = [
+        str(avatar_folder / f"{name.lower()}.png") 
+        for name, *_ in CHARACTERS
+    ]
+
+    # Chatbot with avatars
     chatbot = gr.Chatbot(
         label="Council Discussion",
         height=600,
         show_label=True,
         avatar_images=tuple(avatar_images),
         user_avatar="avatars/user.png"
-        
     )
-    
+
+    # User input row
     with gr.Row():
         msg = gr.Textbox(
             label="Your Message",
@@ -170,25 +188,13 @@ with gr.Blocks(title="cluas_huginn") as demo:
             container=False,
         )
         submit_btn = gr.Button("Send", variant="primary", scale=1)
-    
-    # handle submit
-    msg.submit(
-        chat_fn, 
-        [msg, chatbot], 
-        [chatbot],
-        queue=True,
-        show_progress=True,
-    ).then(
-        lambda: "", None, [msg]
-    )
-    submit_btn.click(
-        chat_fn, 
-        [msg, chatbot], 
-        [chatbot],
-         queue=True,
-        show_progress=True,).then(
-        lambda: "", None, [msg]
-    )
+
+    # Handle submit
+    msg.submit(chat_fn, [msg, chatbot], [chatbot], queue=True, show_progress=True)\
+       .then(lambda: "", None, [msg])
+
+    submit_btn.click(chat_fn, [msg, chatbot], [chatbot], queue=True, show_progress=True)\
+              .then(lambda: "", None, [msg])
     
     gr.Markdown("""
     ### About

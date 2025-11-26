@@ -48,6 +48,18 @@ wheels = [
 ]
 
 [[package]]
+name = "astral"
+version = "3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/04/d1/1adbf06a38dc339e41a1666f6c7135924594c20fd46e060fb263248c564d/astral-3.2.tar.gz", hash = "sha256:9b7c3b412e9e69d172cfb24be0e6addcc9f1bd01a28db8bebe66d75ccc533d88", size = 48075, upload-time = "2022-11-05T18:12:02.913Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/80/d6edd9c3259913cfe39aff2bea4da65de5ad0235a578405e37aabace5f2c/astral-3.2-py3-none-any.whl", hash = "sha256:cb7b49a3f0d4c64ae666be131276d2a3226134c598db10e672028cf8ff855f83", size = 38325, upload-time = "2022-11-05T18:12:01.164Z" },
+]
+
+[[package]]
 name = "attrs"
 version = "25.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -320,6 +332,7 @@ name = "cluas"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "astral" },
     { name = "duckduckgo-search" },
     { name = "fastmcp" },
     { name = "feedparser" },
@@ -328,6 +341,7 @@ dependencies = [
     { name = "groq" },
     { name = "mcp" },
     { name = "newsapi" },
+    { name = "openaq" },
     { name = "python-dotenv" },
     { name = "pytrends" },
     { name = "requests" },
@@ -342,6 +356,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "astral", specifier = ">=3.2" },
     { name = "duckduckgo-search", specifier = ">=8.1.1" },
     { name = "fastmcp", specifier = ">=2.13.1" },
     { name = "feedparser", specifier = ">=6.0.12" },
@@ -350,6 +365,7 @@ requires-dist = [
     { name = "groq", specifier = ">=0.36.0" },
     { name = "mcp", specifier = ">=1.20.0" },
     { name = "newsapi", specifier = ">=0.1.1" },
+    { name = "openaq", specifier = ">=0.5.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "pytrends", specifier = ">=4.9.2" },
     { name = "requests", specifier = ">=2.32.5" },
@@ -1213,6 +1229,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/02/2e/58d83848dd1a79cb92ed8e63f6ba901ca282c5f09d04af9423ec26c56fd7/openapi_pydantic-0.5.1.tar.gz", hash = "sha256:ff6835af6bde7a459fb93eb93bb92b8749b754fc6e51b2f1590a19dc3005ee0d", size = 60892, upload-time = "2025-01-08T19:29:27.083Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/12/cf/03675d8bd8ecbf4445504d8071adab19f5f993676795708e36402ab38263/openapi_pydantic-0.5.1-py3-none-any.whl", hash = "sha256:a3a09ef4586f5bd760a8df7f43028b60cafb6d9f61de2acba9574766255ab146", size = 96381, upload-time = "2025-01-08T19:29:25.275Z" },
+]
+
+[[package]]
+name = "openaq"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/46/b5a7642a23d59ae562825db8de660a41f1d83bbb4da4a17ea56167f1dbd7/openaq-0.5.0.tar.gz", hash = "sha256:ed3bde3227512e0a358928c8fac90a48eb57d3b3c4671e1733e51c5ea11819ba", size = 7066761, upload-time = "2025-10-31T20:32:10.32Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/00/8f74956b4442ddfd86151129d6d6fecb6f7bd2770ef9b400091695c95001/openaq-0.5.0-py3-none-any.whl", hash = "sha256:5e07394349ad1d11d8683274e6fb35a8cb747d329d6783f62aed7fc5f8f7caf5", size = 53869, upload-time = "2025-10-31T20:32:08.649Z" },
 ]
 
 [[package]]

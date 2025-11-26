@@ -4,7 +4,7 @@ import asyncio
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
-from src.cluas_mcp.news.news_search_entrypoint import search_news, get_environmental_data, verify_claim
+from src.cluas_mcp.news.news_search import search_news
 
 load_dotenv()
 

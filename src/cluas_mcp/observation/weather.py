@@ -11,7 +11,7 @@ LOCATION_COORDS = {
     "tokyo": {"lat": 35.6762, "lon": 139.6503}
 }
 
-def get_weather_patterns(location: str = "global", timeframe: str = "recent") -> dict:
+def fetch_weather_patterns(location: str = "global", timeframe: str = "recent") -> dict:
     """
     Get weather using OpenWeatherMap API.
     Free tier: 1,000 calls/day, 60 calls/minute

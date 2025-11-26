@@ -11,3 +11,5 @@ duckduckgo-search==8.1.1
 lxml==6.0.2
 primp==0.15.0
 pytrends==4.9.2
+astral==3.2
+openaq==0.1.2

@@ -6,7 +6,7 @@ News search clients and entrypoint.
 - Preserve API keys, endpoints, and response formats.
 
 # Important files
-- news_api_search.py
+- news_search.py
 - news_search_entrypoint.py
 
 # Ignore

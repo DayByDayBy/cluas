@@ -223,6 +223,13 @@ async def _summarize_cycle(history_text: str) -> str:
     return await get_character_response(corvus, prompt, [])
 
 
+gr.Button("Deliberate", elem_id="deliberate-btn").hover_text(
+    "Enter a question, choose rounds, and watch the council deliberate: \n  thesis → antithesis → synthesis"
+    ) 
+download_btn = gr.File(label="Download Chat", file_types=[".txt"])
+
+history_output = gr.Textbox(label="Conversation History", lines=20)
+
 async def deliberate(
     question: str,
     rounds: int = 1,
@@ -249,7 +256,7 @@ async def deliberate(
     if not question:
         raise ValueError("Question is required for deliberation.")
 
-    rounds = max(1, min(rounds, 5))
+    rounds = max(1, min(rounds, 3))
     rng = random.Random(seed)
     if seed is None:
         seed = rng.randint(0, 1_000_000)
@@ -372,6 +379,24 @@ async def deliberate(
         },
         "history": history_output,
     }
+    
+
+def run_deliberation_and_export(question, rounds, summariser):
+    result = asyncio.run(deliberate(question, rounds=rounds, summariser=summariser))
+    conversation_text = "\n\n".join(result["history"])
+    # Return both for Gradio: update textbox and set file for download
+    import tempfile
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8")
+    tmp_file.write(conversation_text)
+    tmp_file.close()
+    return conversation_text, tmp_file.name
+
+go_btn.click(
+    fn=run_deliberation_and_export,
+    inputs=[question_input, rounds_input, summariser_input],
+    outputs=[history_output, download_btn]
+    )
+
 
 # theme stuff
 
@@ -389,7 +414,7 @@ theme = gr.themes.Soft(
 )
 
 # create Gradio interface
-with gr.Blocks(title="Cluas Huginn", theme=gr.themes.Base(theme="dark")) as demo:
+with gr.Blocks(title="Cluas Huginn", theme=gr.themes.Base(theme=theme)) as demo:
 
     # Branding / tagline
     gr.Markdown("""

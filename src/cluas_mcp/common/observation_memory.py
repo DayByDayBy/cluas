@@ -12,8 +12,9 @@ class ObservationMemory:
     Designed for temporal pattern analysis.
     """
 
-    def __init__(self, memory_file: str = "src/data/observations.json", default_location: str = None):
-        self.memory_file = Path(memory_file)
+    def __init__(self, default_location: str = None):
+        self.memory_file = Path.home() / ".cluas_mcp" / "observation_memory.json"
+        self._ensure_data_dir()
         self.default_location = default_location
         if not self.memory_file.exists():
             self.memory_file.parent.mkdir(parents=True, exist_ok=True)

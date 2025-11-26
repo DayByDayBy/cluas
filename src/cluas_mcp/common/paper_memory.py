@@ -11,8 +11,9 @@ class PaperMemory:
     Stores items with title, DOI, snippet, timestamps, and tags.
     """
 
-    def __init__(self, memory_file: str = "src/data/memory.json"):
-        self.memory_file = Path(memory_file)
+    def __init__(self):
+        self.memory_file = Path.home() / ".cluas_mcp" / "paper_memory.json"
+        self._ensure_data_dir()
         if not self.memory_file.exists():
             self._write_memory({})
         self.memory = self._read_memory()

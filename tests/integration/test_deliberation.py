@@ -1,60 +1,62 @@
 import pytest
+import asyncio
 from src.gradio.app import deliberate, CHARACTERS
 
 @pytest.mark.asyncio
-async def test_single_round_moderator_summary():
-    result = await deliberate(
-        question="What's the best way to help urban crows?",
-        rounds=1,
-        summariser="moderator",
-        format="chat",
-        structure="nested",
-        seed=42
-    )
-
+async def test_basic_deliberation():
+    question = "How do crows solve problems creatively?"
+    
+    result = await deliberate(question, rounds=1)
+    
     # basic checks
+    assert result["question"] == question
+    assert result["rounds"] == 1
     assert "phases" in result
-    assert all(phase in result["phases"] for phase in ("thesis", "antithesis", "synthesis"))
+    assert "cycle_summaries" in result
     assert "final_summary" in result
-    assert isinstance(result["final_summary"]["content"], str)
-    assert len(result["final_summary"]["content"]) > 0
+    assert result["final_summary"]["content"]
 
 @pytest.mark.asyncio
-async def test_multiple_rounds_consistency():
-    # fixed seed should produce consistent character order
-    result1 = await deliberate("Question?", rounds=2, seed=123)
-    result2 = await deliberate("Question?", rounds=2, seed=123)
-    assert result1["character_order"] == result2["character_order"]
+async def test_multiple_rounds():
+    question = "How do corvids communicate complex ideas?"
+    
+    result = await deliberate(question, rounds=2)
+    
+    assert len(result["cycle_summaries"]) == 2
+    # check that each phase has entries
+    for phase in ["thesis", "antithesis", "synthesis"]:
+        assert phase in result["phases"]
+        assert len(result["phases"][phase]) > 0
 
 @pytest.mark.asyncio
-async def test_summariser_character_choice():
-    for name, _, _, _, _ in CHARACTERS:
-        result = await deliberate(
-            question="Test summariser by character",
-            rounds=1,
-            summariser=name,
-            format="llm",
-            structure="flat",
-            seed=99
-        )
-        # ensure final_summary is generated and attributed correctly
-        assert result["final_summary"]["by"] == name
-        assert len(result["final_summary"]["content"]) > 0
+async def test_summariser_options():
+    question = "What is the impact of urbanization on crows?"
+    
+    # use a specific character as summariser
+    for char_name, *_ in CHARACTERS:
+        result = await deliberate(question, summariser=char_name)
+        assert result["final_summary"]["by"] == char_name
 
 @pytest.mark.asyncio
-async def test_output_formats():
-    for fmt in ["chat", "llm"]:
-        result = await deliberate(
-            question="Check output formats",
-            rounds=1,
-            summariser="moderator",
-            format=fmt,
-            structure="nested",
-        )
-        if fmt == "chat":
-            # should be list of dicts with 'role' and 'content'
-            first_entry = result["history"][0]
-            assert "role" in first_entry and "content" in first_entry
-        else:
-            # LLM format should be plain strings
-            assert all(isinstance(item, str) for item in result["history"])
+async def test_format_and_structure_options():
+    question = "Can crows understand human gestures?"
+    
+    # test 'chat' format
+    chat_result = await deliberate(question, format="chat", structure="nested")
+    assert all("role" in entry and "content" in entry for entry in chat_result["history"])
+    
+    # test flat structure
+    flat_result = await deliberate(question, format="llm", structure="flat")
+    assert isinstance(flat_result["phases"], list)
+    
+@pytest.mark.asyncio
+async def test_random_seed_reproducibility():
+    question = "Do crows plan ahead?"
+    
+    r1 = await deliberate(question, rounds=1, seed=42)
+    r2 = await deliberate(question, rounds=1, seed=42)
+    
+    # the character order should be identical with the same seed
+    assert r1["character_order"] == r2["character_order"]
+    # the final summary should also match
+    assert r1["final_summary"]["content"] == r2["final_summary"]["content"]

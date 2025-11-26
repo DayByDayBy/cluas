@@ -6,8 +6,9 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
-from src.cluas_mcp.web.web_search import search_web, find_trending_topics, get_quick_facts
-from src.cluas_mcp.news.news_search_entrypoint import search_news, get_environmental_data, verify_claim
+from src.cluas_mcp.web.web_search import search_web
+from src.cluas_mcp.web.trending import fetch_trends
+from src.cluas_mcp.news.news_search_entrypoint import search_news
 from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
 
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +51,7 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="find_trending_topics",
+            name="fetch_trends",
             description="Find trending topics in a given category",
             inputSchema={
                 "type": "object",
@@ -216,9 +217,9 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
         formatted = format_web_search_results(results)
         return [TextContent(type="text", text=formatted)]
     
-    elif tool_name == "find_trending_topics":
+    elif tool_name == "fetch_trends":
         category = arguments.get("category", "general")
-        results = await loop.run_in_executor(None, find_trending_topics, category)
+        results = await loop.run_in_executor(None, fetch_trends, category)
         formatted = format_trending_topics(results)
         return [TextContent(type="text", text=formatted)]
     

@@ -1,6 +1,7 @@
 from astral import LocationInfo
 from astral.sun import sun
 from datetime import datetime, date
+from typing import Optional
 
 LOCATIONS = {
     "brooklyn": LocationInfo("Brooklyn", "USA", "America/New_York", 40.6782, -73.9442),

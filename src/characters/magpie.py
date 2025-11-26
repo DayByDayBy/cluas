@@ -4,7 +4,8 @@ import asyncio
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
-from src.cluas_mcp.web.web_search import search_web, find_trending_topics, get_quick_facts
+from src.cluas_mcp.web.web_search import search_web
+from src.cluas_mcp.web.trending import fetch_trends
 
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
@@ -17,7 +18,7 @@ class Magpie:
     def __init__(self, use_groq=True, location="Brooklyn, NY"):
         self.name = "Magpie"
         self.use_groq = use_groq
-        self.tools = ["search_web", "find_trending_topics"]
+        self.tools = ["search_web", "fetch_trends"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
@@ -51,7 +52,7 @@ You're in a group chat, so keep it fun and engaging!
 
 TOOLS AVAILABLE:
 - search_web: Search the web for current information
-- find_trending_topics: Find what's trending right now
+- fetch_trend_topics: Find what's trending right now
 - get_quick_facts: Get quick facts about any topic
 
 When you need current information or want to share something interesting, use your tools!"""
@@ -135,7 +136,7 @@ When you need current information or want to share something interesting, use yo
             {
                 "type": "function",
                 "function": {
-                    "name": "find_trending_topics",
+                    "name": "fetch_trends",
                     "description": "Find trending topics in a given category",
                     "parameters": {
                         "type": "object",
@@ -197,9 +198,9 @@ When you need current information or want to share something interesting, use yo
                 search_results = await loop.run_in_executor(None, search_web, query)
                 tool_result = self._format_web_search_for_llm(search_results)
             
-            elif tool_name == "find_trending_topics":
+            elif tool_name == "fetch_trends":
                 category = args.get("category", "general")
-                trending_results = await loop.run_in_executor(None, find_trending_topics, category)
+                trending_results = await loop.run_in_executor(None, fetch_trends, category)
                 tool_result = self._format_trending_topics_for_llm(trending_results)
             
             elif tool_name == "get_quick_facts":

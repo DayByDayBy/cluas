@@ -9,3 +9,4 @@ def search_news_entrypoint(query: str, max_results: int = 5) -> dict:
     Uses cascading fallbacks: NewsAPI -> DuckDuckGo -> Google -> Bing -> Mock.
     """
     return search_news(query, max_results)
+

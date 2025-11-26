@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 from difflib import SequenceMatcher
 
 
-class AgentMemory:
+class PaperMemory:
     """
     lightweight JSON-backed memory system for AI agents.
     Stores items with title, DOI, snippet, timestamps, and tags.
@@ -113,8 +113,6 @@ class AgentMemory:
             
         results.sort(key=lambda x: x['relevance_score'], reverse=True)
         return results
-
-
 
 
 

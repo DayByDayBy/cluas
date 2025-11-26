@@ -1,9 +1,12 @@
 import os
 import json
 import asyncio
+import logging
+import requests
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
+from openai import OpenAI
 from src.cluas_mcp.web.web_search import search_web
 from src.cluas_mcp.web.trending import fetch_trends
 
@@ -11,25 +14,47 @@ from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
 
+try:
+    from src.cluas_mcp.web.quick_facts import get_quick_facts
+except ImportError:  # pragma: no cover - optional dependency
+    get_quick_facts = None
+
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 class Magpie:
-    def __init__(self, use_groq=True, location="Brooklyn, NY"):
+    def __init__(self, provider_config: Optional[Dict] = None, location: str = "Brooklyn, NY"):
         self.name = "Magpie"
-        self.use_groq = use_groq
-        self.tools = ["search_web", "fetch_trends"]
+        self.location = location
+        self.tools = ["search_web", "fetch_trends", "get_quick_facts"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
+        self.tool_functions = {
+            "search_web": search_web,
+            "fetch_trends": fetch_trends
+        }
+        if get_quick_facts:
+            self.tool_functions["get_quick_facts"] = get_quick_facts
         
+        if provider_config is None:
+            provider_config = {
+                "primary": "groq",
+                "fallback": ["nebius"],
+                "models": {
+                    "groq": "llama-3.1-70b-versatile",
+                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                },
+                "timeout": 30,
+                "use_cloud": True
+            }
         
-        if use_groq:
-            api_key = os.getenv("GROQ_API_KEY")
-            if not api_key:
-                raise ValueError("GROQ_API_KEY not found in environment")
-            self.client = Groq(api_key=api_key)
-            self.model = "openai/gpt-oss-120b"
+        self.provider_config = provider_config
+        self.use_cloud = provider_config.get("use_cloud", True)
+        
+        if self.use_cloud:
+            self._init_clients()
         else:
             self.model = "llama3.1:8b"
         
@@ -57,65 +82,31 @@ TOOLS AVAILABLE:
 
 When you need current information or want to share something interesting, use your tools!"""
 
-    async def respond(self, 
-                     message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
-        """Generate a response."""
-        if self.use_groq:
-            return await self._respond_groq(message, conversation_history)
-        else:
-            return self._respond_ollama(message, conversation_history)
-    
-    def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
-        """Use Ollama."""
-        prompt = self._build_prompt(message, history)
-        
-        response = requests.post('http://localhost:11434/api/generate', json={
-            "model": self.model,
-            "prompt": prompt,
-            "system": self.get_system_prompt(),
-            "stream": False,
-            "options": {
-                "temperature": 0.8,
-                "num_predict": 200,
-            }
-        })
-        
-        if response.status_code != 200:
-            return f"[Magpie is having technical difficulties: {response.status_code}]"
-        
-        result = response.json()
-        return result.get('response', '').strip()
-    
-    def _build_prompt(self, message: str, history: Optional[List[Dict]] = None) -> str:
-        """Build prompt for Ollama."""
-        if not history:
-            return f"User: {message}\n\nMagpie:"
-        
-        prompt_parts = []
-        for msg in history[-5:]:
-            role = msg.get('role', 'user')
-            content = msg.get('content', '')
-            if role == 'user':
-                prompt_parts.append(f"User: {content}")
-            elif role == 'assistant':
-                prompt_parts.append(f"Magpie: {content}")
-        
-        prompt_parts.append(f"User: {message}")
-        prompt_parts.append("Magpie:")
-        
-        return "\n\n".join(prompt_parts)
-    
-    async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:
-        """Use Groq API with tools"""
-        messages = [{"role": "system", "content": self.get_system_prompt()}]
-        
-        if history:
-            messages.extend(history[-5:])
-        
-        messages.append({"role": "user", "content": message})
-        
-        tools = [
+    def _init_clients(self) -> None:
+        """Initialize remote provider clients."""
+        self.clients = {}
+        api_timeout = self.provider_config.get("timeout", 30)
+
+        if os.getenv("GROQ_API_KEY"):
+            self.clients["groq"] = Groq(
+                api_key=os.getenv("GROQ_API_KEY"),
+                timeout=api_timeout
+            )
+
+        if os.getenv("NEBIUS_API_KEY"):
+            self.clients["nebius"] = OpenAI(
+                api_key=os.getenv("NEBIUS_API_KEY"),
+                base_url="https://api.tokenfactory.nebius.com/v1",
+                timeout=api_timeout
+            )
+
+        if not self.clients:
+            raise ValueError(f"{self.name}: No LLM provider API keys found in environment")
+
+        logger.info("%s initialized with providers: %s", self.name, list(self.clients.keys()))
+
+    def _get_tool_definitions(self) -> List[Dict]:
+        return [
             {
                 "type": "function",
                 "function": {
@@ -169,18 +160,109 @@ When you need current information or want to share something interesting, use yo
                 }
             }
         ]
+
+    def _call_llm(self,
+                  messages: List[Dict],
+                  tools: Optional[List[Dict]] = None,
+                  temperature: float = 0.8,
+                  max_tokens: int = 150):
+        """Call configured LLM providers with fallback order."""
+        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
+        last_error = None
+
+        for provider in providers:
+            client = self.clients.get(provider)
+            if not client:
+                logger.debug("%s: skipping provider %s (not configured)", self.name, provider)
+                continue
+
+            try:
+                model = self.provider_config["models"][provider]
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto" if tools else None,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                logger.info("%s successfully used %s", self.name, provider)
+                return response, provider
+            except Exception as exc:
+                last_error = exc
+                logger.warning("%s: %s failed (%s)", self.name, provider, str(exc)[:100])
+                continue
+
+        raise RuntimeError(f"All LLM providers failed for {self.name}. Last error: {last_error}")
+
+    async def respond(self, 
+                     message: str,
+                     conversation_history: Optional[List[Dict]] = None) -> str:
+        """Generate a response."""
+        if self.use_cloud:
+            return await self._respond_cloud(message, conversation_history)
+        return self._respond_ollama(message, conversation_history)
+    
+    def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Use Ollama."""
+        prompt = self._build_prompt(message, history)
+        
+        response = requests.post('http://localhost:11434/api/generate', json={
+            "model": self.model,
+            "prompt": prompt,
+            "system": self.get_system_prompt(),
+            "stream": False,
+            "options": {
+                "temperature": 0.8,
+                "num_predict": 200,
+            }
+        })
+        
+        if response.status_code != 200:
+            return f"[Magpie is having technical difficulties: {response.status_code}]"
+        
+        result = response.json()
+        return result.get('response', '').strip()
+    
+    def _build_prompt(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Build prompt for Ollama."""
+        if not history:
+            return f"User: {message}\n\nMagpie:"
+        
+        prompt_parts = []
+        for msg in history[-5:]:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')
+            if role == 'user':
+                prompt_parts.append(f"User: {content}")
+            elif role == 'assistant':
+                prompt_parts.append(f"Magpie: {content}")
+        
+        prompt_parts.append(f"User: {message}")
+        prompt_parts.append("Magpie:")
+        
+        return "\n\n".join(prompt_parts)
+    
+    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Use configured cloud providers with tools."""
+        messages = [{"role": "system", "content": self.get_system_prompt()}]
+        
+        if history:
+            messages.extend(history[-5:])
+        
+        messages.append({"role": "user", "content": message})
+        
+        tools = self._get_tool_definitions()
         
         # First LLM call
-        response = self.client.chat.completions.create(
-            model=self.model,
+        first_response, _ = self._call_llm(
             messages=messages,
             tools=tools,
-            tool_choice="auto",
             temperature=0.8,
             max_tokens=150
         )
         
-        choice = response.choices[0]
+        choice = first_response.choices[0]
         
         # Check if model wants to use tool
         if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
@@ -195,18 +277,24 @@ When you need current information or want to share something interesting, use yo
             # Call the appropriate tool
             if tool_name == "search_web":
                 query = args.get("query")
-                search_results = await loop.run_in_executor(None, search_web, query)
-                tool_result = self._format_web_search_for_llm(search_results)
+                tool_func = self.tool_functions.get(tool_name)
+                if tool_func and query:
+                    search_results = await loop.run_in_executor(None, lambda: tool_func(query))
+                    tool_result = self._format_web_search_for_llm(search_results)
             
             elif tool_name == "fetch_trends":
                 category = args.get("category", "general")
-                trending_results = await loop.run_in_executor(None, fetch_trends, category)
-                tool_result = self._format_trending_topics_for_llm(trending_results)
+                tool_func = self.tool_functions.get(tool_name)
+                if tool_func:
+                    trending_results = await loop.run_in_executor(None, lambda: tool_func(category))
+                    tool_result = self._format_trending_topics_for_llm(trending_results)
             
             elif tool_name == "get_quick_facts":
                 topic = args.get("topic")
-                facts_results = await loop.run_in_executor(None, get_quick_facts, topic)
-                tool_result = self._format_quick_facts_for_llm(facts_results)
+                tool_func = self.tool_functions.get(tool_name)
+                if tool_func and topic:
+                    facts_results = await loop.run_in_executor(None, lambda: tool_func(topic))
+                    tool_result = self._format_quick_facts_for_llm(facts_results)
             
             if tool_result:
                 # Add tool call and result to conversation
@@ -229,8 +317,7 @@ When you need current information or want to share something interesting, use yo
                 })
                 
                 # Second LLM call with tool results
-                final_response = self.client.chat.completions.create(
-                    model=self.model,
+                final_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.8,
                     max_tokens=200  # More tokens for synthesis

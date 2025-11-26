@@ -8,6 +8,7 @@ from src.cluas_mcp.web.web_search import search_web, find_trending_topics, get_q
 
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
+from src.cluas_mcp.common.trend_memory import TrendMemory
 
 
 load_dotenv()
@@ -17,8 +18,10 @@ class Magpie:
         self.name = "Magpie"
         self.use_groq = use_groq
         self.tools = ["search_web", "find_trending_topics"]
+        self.trend_memory - TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
+        
         
         if use_groq:
             api_key = os.getenv("GROQ_API_KEY")

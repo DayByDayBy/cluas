@@ -36,7 +36,7 @@ class Corvus:
         
         """get system prompt with memory context"""
         
-        recent_papers = self.memory.get_recent(days=7)
+        recent_papers = self.paper_memory.get_recent(days=7)
     
         memory_context = ""
         if recent_papers:
@@ -76,7 +76,7 @@ class Corvus:
     
     def recall_paper(self, query: str) -> Optional[Dict]:
         """Try to recall a paper from memory before searching"""
-        matches = self.memory.search_title_scored(query)
+        matches = self.paper_memory.search_title_scored(query)
         
         if matches:
             best = matches[0]
@@ -88,8 +88,8 @@ class Corvus:
     def clear_memory(self):
         """clears the memory (testing/fresh install purposes)"""
         
-        self.memory.memory = {}
-        self.memory._write_memory({})
+        self.paper_memory.memory = {}
+        self.paper_memory._write_memory({})
         logger.info(f"{self.name}'s memory cleared.")
 
 
@@ -217,9 +217,9 @@ class Corvus:
                 
                 if title != "No title":
                     try:
-                        existing = self.memory.search_title(title)
+                        existing = self.paper_memory.search_title(title)
                         if not existing:
-                            self.memory.add_item(
+                            self.paper_memory.add_item(
                                 title=title,
                                 doi=paper.get("doi"),
                                 snippet=abstract,
@@ -245,7 +245,7 @@ class Corvus:
                     
                 if title != "No title":
                     try:    
-                        self.memory.add_item(
+                        self.paper_memory.add_item(
                             title=title,
                             doi=paper.get("arxiv_id"),  # ArXiv uses arxiv_id not DOI
                             snippet=abstract,

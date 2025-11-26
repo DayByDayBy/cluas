@@ -82,7 +82,7 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
     def _build_recent_observation_context(self) -> str:
         """Summarize recent observations for extra context in the system prompt."""
         try:
-            recent = self.memory.get_recent(days=3)
+            recent = self.observation_memory.get_recent(days=3)
         except Exception as exc:
             logger.warning("Unable to load recent observations: %s", exc)
             return ""
@@ -358,7 +358,7 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
             conditions = self._derive_conditions(tool_name, result)
             notes = f"Triggered by: {user_message[:120]}"
 
-            self.memory.add_observation(
+            self.observation_memory.add_observation(
                 obs_type=obs_type,
                 location=location,
                 data=result,
@@ -417,11 +417,11 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
 
     def recall_observations(self, obs_type: str, days: int = 7) -> List[Dict]:
         """Fetch recent observations of a particular type."""
-        return self.memory.search_observations(obs_type=obs_type, days=days)
+        return self.observation_memory.search_observations(obs_type=obs_type, days=days)
 
     def clear_memory(self) -> None:
         """Reset Crow's observation memory (useful for tests)."""
-        self.memory.clear_all()
+        self.observation_memory.clear_all()
     
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use Ollama (no tool support, conversational only)."""

@@ -27,29 +27,51 @@ characters = {
 print("--- Initializing Characters ---")
 
 # Set a dummy GROQ_API_KEY for testing purposes if it's not already set
-# This allows the use_groq=True path to be tested without an actual key,
-# but it will still raise an error if the key is explicitly checked for existence
-# in the character's __init__ method (which is good, as it tests that check).
 if "GROQ_API_KEY" not in os.environ:
     os.environ["GROQ_API_KEY"] = "dummy_key_for_testing"
+
+# Define test configurations
+cloud_config = {
+    "primary": "groq",
+    "fallback": ["nebius"],
+    "models": {
+        "groq": "llama-3.1-70b-versatile",
+        "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+    },
+    "timeout": 30,
+    "use_cloud": True
+}
+
+ollama_config = {
+    "use_cloud": False
+}
 
 for name, char_class in characters.items():
     print(f"Testing {name}...")
 
-    # Test with use_groq=True
+    # Test with cloud providers (use_cloud=True)
     try:
-        instance = char_class(use_groq=True)
-        print(f"  ✅ {name} (use_groq=True) initialized successfully.")
+        instance = char_class(provider_config=cloud_config)
+        print(f"  ✅ {name} (cloud providers) initialized successfully.")
     except ValueError as e:
-        print(f"  ❌ {name} (use_groq=True) failed to initialize: {e} (Expected if GROQ_API_KEY is missing or invalid)")
+        print(f"  ❌ {name} (cloud providers) failed to initialize: {e} (Expected if API keys are missing)")
     except Exception as e:
-        print(f"  ❌ {name} (use_groq=True) failed to initialize with unexpected error: {e}")
+        print(f"  ❌ {name} (cloud providers) failed with unexpected error: {e}")
 
-    # Test with use_groq=False (Ollama path)
+    # Test with Ollama (use_cloud=False)
     try:
-        instance = char_class(use_groq=False)
-        print(f"  ✅ {name} (use_groq=False) initialized successfully.")
+        instance = char_class(provider_config=ollama_config)
+        print(f"  ✅ {name} (Ollama) initialized successfully.")
     except Exception as e:
-        print(f"  ❌ {name} (use_groq=False) failed to initialize: {e}")
+        print(f"  ❌ {name} (Ollama) failed to initialize: {e}")
+    
+    # Test with default config (None - should use defaults)
+    try:
+        instance = char_class()
+        print(f"  ✅ {name} (default config) initialized successfully.")
+    except ValueError as e:
+        print(f"  ⚠️  {name} (default config) failed: {e} (Expected if no API keys configured)")
+    except Exception as e:
+        print(f"  ❌ {name} (default config) failed with unexpected error: {e}")
 
 print("--- Character Initialization Test Complete ---")

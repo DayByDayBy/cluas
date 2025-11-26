@@ -12,15 +12,18 @@ class TrendMemory:
     Designed for tracking search history and trend patterns.
     """
 
-    def __init__(self, location: Optional[str] = None):
+    def __init__(
+        self, 
+        location: Optional[str] = None, 
+        memory_file: Optional[Path] = None):
         """
         Initialize TrendMemory with optional default location.
-        
         Args:
             location: Default location context for entries (e.g., "Brooklyn")
         """
         self.default_location = location
-        self.memory_file = Path.home() / ".cluas_mcp" / "trend_memory.json"
+        self.memory_file = Path(memory_file) if memory_file else Path.home() / ".cluas_mcp" / "trend_memory.json"
+
         self._ensure_data_dir()
         if not self.memory_file.exists():
             self._write_memory({})

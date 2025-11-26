@@ -11,14 +11,23 @@ class PaperMemory:
     Stores items with title, DOI, snippet, timestamps, and tags.
     """
 
-    def __init__(self):
-        self.memory_file = Path.home() / ".cluas_mcp" / "paper_memory.json"
+    def __init__(
+        self, 
+        memory_file: Optional[Path] = None): 
+               
+        self.memory_file = Path(memory_file) if memory_file else Path.home() / ".cluas_mcp" / "paper_memory.json"
         self._ensure_data_dir()
+        
         if not self.memory_file.exists():
             self._write_memory({})
         self.memory = self._read_memory()
 
     # --- internal file operations ---
+    
+    def _ensure_data_dir(self):
+        """Create data directory if it doesn't exist."""
+        self.memory_file.parent.mkdir(parents=True, exist_ok=True)
+
     def _read_memory(self) -> Dict:
         with open(self.memory_file, "r") as f:
             return json.load(f)

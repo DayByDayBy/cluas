@@ -1,9 +1,11 @@
 import os
 import json
 import asyncio
+import logging
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from groq import Groq
+from openai import OpenAI
 from src.cluas_mcp.news.news_search import search_news
 from src.cluas_mcp.web.web_search import search_web
 from src.cluas_mcp.web.trending import fetch_trends
@@ -11,12 +13,13 @@ from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Raven:
-    def __init__(self, use_groq=True, location="Seattle, WA"):
+    def __init__(self, provider_config=None, location="Seattle, WA"):
         self.name = "Raven"
         self.location = location
-        self.use_groq = use_groq
         self.tools = ["search_news", "search_web", "fetch_trends"]
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
@@ -26,14 +29,52 @@ class Raven:
             "fetch_trends": fetch_trends,
         }
         
-        if use_groq:
-            api_key = os.getenv("GROQ_API_KEY")
-            if not api_key:
-                raise ValueError("GROQ_API_KEY not found in environment")
-            self.client = Groq(api_key=api_key)
-            self.model = "openai/gpt-oss-120b"
+        # Default provider priority
+        if provider_config is None:
+            provider_config = {
+                "primary": "groq",
+                "fallback": ["nebius"],
+                "models": {
+                    "groq": "llama-3.1-70b-versatile",
+                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                },
+                "timeout": 30,
+                "use_cloud": True
+            }
+        
+        self.provider_config = provider_config
+        self.use_cloud = provider_config.get("use_cloud", True)
+        
+        if self.use_cloud:
+            self._init_clients()
         else:
+            # Local ollama fallback
             self.model = "llama3.1:8b"
+    
+    def _init_clients(self):
+        """Initialize all available provider clients"""
+        self.clients = {}
+        
+        # Groq
+        if os.getenv("GROQ_API_KEY"):
+            self.clients["groq"] = Groq(
+                api_key=os.getenv("GROQ_API_KEY"),
+                timeout=self.provider_config.get("timeout", 30)
+            )
+        
+        # Nebius Token Factory (OpenAI-compatible)
+        if os.getenv("NEBIUS_API_KEY"):
+            self.clients["nebius"] = OpenAI(
+                api_key=os.getenv("NEBIUS_API_KEY"),
+                base_url="https://api.tokenfactory.nebius.com/v1",
+                timeout=self.provider_config.get("timeout", 30)
+            )
+        
+        # Log which providers are available
+        available = list(self.clients.keys())
+        if not available:
+            raise ValueError(f"{self.name}: No LLM provider API keys found in environment")
+        logger.info(f"{self.name} initialized with providers: {available}")
         
     def get_system_prompt(self) -> str:
         return """You are Raven, a passionate activist and truth-seeker.
@@ -59,24 +100,9 @@ TOOLS AVAILABLE:
 
 When you need to verify information or find current news, use your tools!"""
 
-    async def respond(self, 
-                     message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
-        """Generate a response."""
-        if self.use_groq:
-            return await self._respond_groq(message, conversation_history)
-        return self._respond_ollama(message, conversation_history)
-
-    async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:
-        """Use Groq with tool calling for Raven's investigative workflow."""
-        messages = [{"role": "system", "content": self.get_system_prompt()}]
-
-        if history:
-            messages.extend(history[-5:])
-
-        messages.append({"role": "user", "content": message})
-
-        tools = [
+    def _get_tool_definitions(self) -> List[Dict]:
+        """Return tool definitions for function calling"""
+        return [
             {
                 "type": "function",
                 "function": {
@@ -134,17 +160,72 @@ When you need to verify information or find current news, use your tools!"""
             }
         ]
 
-        first_response = self.client.chat.completions.create(
-            model=self.model,
+    def _call_llm(self, messages: List[Dict], tools: Optional[List[Dict]] = None, 
+                  temperature: float = 0.8, max_tokens: int = 150) -> tuple:
+        """Call LLM with automatic fallback"""
+        providers = [self.provider_config["primary"]] + self.provider_config["fallback"]
+        last_error = None
+        
+        for provider in providers:
+            if provider not in self.clients:
+                logger.debug(f"{self.name}: Skipping {provider} - not configured")
+                continue
+                
+            try:
+                model = self.provider_config["models"][provider]
+                logger.debug(f"{self.name} trying {provider} with model {model}")
+                
+                # Both Groq and OpenAI clients have same interface
+                response = self.clients[provider].chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto" if tools else None,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                
+                logger.info(f"{self.name} successfully used {provider}")
+                return response, provider
+                
+            except Exception as e:
+                last_error = e
+                logger.warning(f"{self.name}: {provider} failed - {str(e)[:100]}")
+                continue
+        
+        # If we get here, all providers failed
+        raise Exception(f"All LLM providers failed for {self.name}. Last error: {last_error}")
+
+    async def respond(self, 
+                     message: str,
+                     conversation_history: Optional[List[Dict]] = None) -> str:
+        """Generate a response."""
+        if self.use_cloud:
+            return await self._respond_cloud(message, conversation_history)
+        return self._respond_ollama(message, conversation_history)
+
+    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Use cloud providers with tool calling for Raven's investigative workflow."""
+        messages = [{"role": "system", "content": self.get_system_prompt()}]
+
+        if history:
+            messages.extend(history[-5:])
+
+        messages.append({"role": "user", "content": message})
+
+        tools = self._get_tool_definitions()
+
+        # First LLM call - may trigger tool use
+        first_response, provider = self._call_llm(
             messages=messages,
             tools=tools,
-            tool_choice="auto",
             temperature=0.8,
             max_tokens=150
         )
 
         choice = first_response.choices[0]
 
+        # Check if LLM wants to use tools
         if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
             tool_call = choice.message.tool_calls[0]
             tool_name = tool_call.function.name
@@ -157,6 +238,7 @@ When you need to verify information or find current news, use your tools!"""
                 
                 formatted = self._format_tool_result(tool_name, tool_result)
 
+                # Add tool call and result to messages
                 messages.append({
                     "role": "assistant",
                     "content": None,
@@ -175,8 +257,8 @@ When you need to verify information or find current news, use your tools!"""
                     "content": formatted
                 })
 
-                second_response = self.client.chat.completions.create(
-                    model=self.model,
+                # Second LLM call with tool results
+                second_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.8,
                     max_tokens=200
@@ -237,7 +319,6 @@ When you need to verify information or find current news, use your tools!"""
         """Placeholder for local inference without tool calls."""
         prompt = self._build_prompt(message, history)
         
-        # requests import has to be at the top of the file
         import requests
 
         response = requests.post('http://localhost:11434/api/generate', json={
@@ -272,4 +353,3 @@ When you need to verify information or find current news, use your tools!"""
         transcript.append(f"User: {message}")
         transcript.append("Raven:")
         return "\n\n".join(transcript)
-

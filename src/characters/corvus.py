@@ -6,6 +6,7 @@ import logging
 from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
+from openai import OpenAI
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
@@ -16,19 +17,32 @@ logger = logging.getLogger(__name__)
 
 class Corvus:
     
-    def __init__(self, use_groq=True, location="Glasgow, Scotland"):
+    def __init__(self, provider_config: Optional[Dict] = None, location: str = "Glasgow, Scotland"):
         self.name = "Corvus"
-        self.use_groq = use_groq
+        self.location = location
         self.paper_memory = PaperMemory() 
         self.observation_memory = ObservationMemory(location=location)
+        self.tool_functions = {
+            "academic_search": academic_search
+        }
 
-         
-        if use_groq:
-            api_key = os.getenv("GROQ_API_KEY")
-            if not api_key:
-                raise ValueError("GROQ_API_KEY not found in environment")
-            self.client = Groq(api_key=api_key)
-            self.model = "openai/gpt-oss-120b"
+        if provider_config is None:
+            provider_config = {
+                "primary": "groq",
+                "fallback": ["nebius"],
+                "models": {
+                    "groq": "llama-3.1-70b-versatile",
+                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                },
+                "timeout": 30,
+                "use_cloud": True
+            }
+
+        self.provider_config = provider_config
+        self.use_cloud = provider_config.get("use_cloud", True)
+
+        if self.use_cloud:
+            self._init_clients()
         else:
             self.model = "llama3.1:8b"
         
@@ -72,6 +86,83 @@ class Corvus:
 
         return corvus_base_prompt + memory_context
 
+    def _init_clients(self) -> None:
+        """Initialize remote provider clients."""
+        self.clients = {}
+
+        api_timeout = self.provider_config.get("timeout", 30)
+
+        if os.getenv("GROQ_API_KEY"):
+            self.clients["groq"] = Groq(
+                api_key=os.getenv("GROQ_API_KEY"),
+                timeout=api_timeout
+            )
+
+        if os.getenv("NEBIUS_API_KEY"):
+            self.clients["nebius"] = OpenAI(
+                api_key=os.getenv("NEBIUS_API_KEY"),
+                base_url="https://api.tokenfactory.nebius.com/v1",
+                timeout=api_timeout
+            )
+
+        if not self.clients:
+            raise ValueError(f"{self.name}: No LLM provider API keys found in environment")
+
+        logger.info("%s initialized with providers: %s", self.name, list(self.clients.keys()))
+
+    def _get_tool_definitions(self) -> List[Dict]:
+        return [{
+            "type": "function",
+            "function": {
+                "name": "academic_search",
+                "description": "Search academic papers in PubMed, ArXiv, and Semantic Scholar",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for academic papers"
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        }]
+
+    def _call_llm(self,
+                  messages: List[Dict],
+                  tools: Optional[List[Dict]] = None,
+                  temperature: float = 0.8,
+                  max_tokens: int = 150):
+        """Call configured LLM providers with fallback order."""
+        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
+        last_error = None
+
+        for provider in providers:
+            client = self.clients.get(provider)
+            if not client:
+                logger.debug("%s: skipping provider %s (not configured)", self.name, provider)
+                continue
+
+            try:
+                model = self.provider_config["models"][provider]
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto" if tools else None,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                logger.info("%s successfully used %s", self.name, provider)
+                return response, provider
+            except Exception as exc:
+                last_error = exc
+                logger.warning("%s: %s failed (%s)", self.name, provider, str(exc)[:100])
+                continue
+
+        raise RuntimeError(f"All LLM providers failed for {self.name}. Last error: {last_error}")
+
   # little bit of fuzzy for the recall:
     
     def recall_paper(self, query: str) -> Optional[Dict]:
@@ -98,13 +189,12 @@ class Corvus:
                      message: str,
                      conversation_history: Optional[List[Dict]] = None) -> str:
         """Generate a response."""
-        if self.use_groq:
-            return await self._respond_groq(message, conversation_history)  # add await
-        else:
-            return self._respond_ollama(message, conversation_history)
+        if self.use_cloud:
+            return await self._respond_cloud(message, conversation_history)
+        return self._respond_ollama(message, conversation_history)
     
-    async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:  # make async
-        """Use Groq API with tools"""
+    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Use configured cloud providers with tools."""
         
         if "paper" in message.lower() and len(message.split()) < 10:   # maybe add oyther keywords? "or study"? "or article"?
             recalled = self.recall_paper(message)
@@ -119,48 +209,31 @@ class Corvus:
         
         messages.append({"role": "user", "content": message})
         
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "academic_search",
-                "description": "Search academic papers in PubMed, ArXiv, and Semantic Scholar",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Search query for academic papers"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            }
-        }]
+        tools = self._get_tool_definitions()
         
-        # first LLM call
-        response = self.client.chat.completions.create(
-            model=self.model,
+        first_response, _ = self._call_llm(
             messages=messages,
             tools=tools,
-            tool_choice="auto",
             temperature=0.8,
             max_tokens=150
         )
         
-        choice = response.choices[0]
+        choice = first_response.choices[0]
         
         # check if model wants to use tool
         if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
             tool_call = choice.message.tool_calls[0]
             
-            if tool_call.function.name == "academic_search":
+            tool_name = tool_call.function.name
+            
+            if tool_name in self.tool_functions:
                 # Parse arguments
                 args = json.loads(tool_call.function.arguments)
-                query = args.get("query")
                 
                 # Call the search function (it's sync, so use executor)
                 loop = asyncio.get_event_loop()
-                search_results = await loop.run_in_executor(None, academic_search, query)
+                tool_func = self.tool_functions[tool_name]
+                search_results = await loop.run_in_executor(None, lambda: tool_func(**args))
                 
                 # Format results for LLM
                 tool_result = self._format_search_for_llm(search_results)
@@ -185,8 +258,7 @@ class Corvus:
                 })
                 
                 # second LLM call with search results
-                final_response = self.client.chat.completions.create(
-                    model=self.model,
+                final_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.8,
                     max_tokens=200  # More tokens for synthesis

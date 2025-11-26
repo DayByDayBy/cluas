@@ -12,8 +12,9 @@ class ObservationMemory:
     Designed for temporal pattern analysis.
     """
 
-    def __init__(self, memory_file: str = "src/data/observations.json"):
+    def __init__(self, memory_file: str = "src/data/observations.json", default_location: str = None):
         self.memory_file = Path(memory_file)
+        self.default_location = default_location
         if not self.memory_file.exists():
             self.memory_file.parent.mkdir(parents=True, exist_ok=True)
             self._write_memory({})
@@ -109,17 +110,38 @@ class ObservationMemory:
         
         return sorted(results, key=lambda x: x["timestamp"])
 
-    def get_recent(self, days: int = 7) -> List[Dict]:
+    def get_recent(self, days: int = 7, location="USE_DEFAULT") -> List[Dict]:
         """Return observations from the last N days."""
         cutoff = datetime.now(UTC) - timedelta(days=days)
-        return self.get_by_date_range(start_date=cutoff)
+        results = self.get_by_date_range(start_date=cutoff)
+        if location == "USE_DEFAULT":
+            location = self.default_location
+        if location:
+            location_lower = location.lower()
+            results = [
+                obs for obs in results
+                if location_lower in obs.get("location", "").lower()
+            ]
+        return results
 
-    def get_by_tag(self, tag: str) -> List[Dict]:
+
+
+    def get_by_tag(self, tag: str, location: str="USE_DEFAULT") -> List[Dict]:
         """Return observations with a specific tag."""
-        return [
+        results = [
             obs for obs in self.memory.values()
             if tag in obs.get("tags", [])
         ]
+        if location == "USE_DEFAULT":
+            location = self.default_location
+        if location:
+            location_lower = location.lower()
+            results = [
+                obs for obs in results
+                if location_lower in obs.get("location", "").lower()
+            ]
+        return results
+
 
     def search_observations(
         self,
@@ -167,7 +189,7 @@ class ObservationMemory:
     def analyze_patterns(
         self,
         obs_type: str,
-        location: Optional[str] = None,
+        location: str = "USE_DEFAULT",
         days: int = 30
     ) -> Dict[str, Any]:
         """
@@ -183,14 +205,14 @@ class ObservationMemory:
         """
         observations = self.search_observations(
             obs_type=obs_type,
-            location=location,
+            location=location if location != "USE_DEFAULT" else self.default_location,
             days=days
         )
         
         if not observations:
             return {
                 "type": obs_type,
-                "location": location,
+                "location": location if location != "USE_DEFAULT" else self.default_location,
                 "days": days,
                 "count": 0,
                 "message": "No observations found for analysis"

@@ -7,6 +7,7 @@ from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from groq import Groq
+from openai import OpenAI
 from src.cluas_mcp.observation.observation_entrypoint import (
     get_bird_sightings, 
     get_weather_patterns, 
@@ -25,9 +26,8 @@ logger = logging.getLogger(__name__)
 
 class Crow:
     
-    def __init__(self, use_groq=True, location="Tokyo, Japan"):
+    def __init__(self, provider_config: Optional[Dict] = None, location: str = "Tokyo, Japan"):
         self.name = "Crow"
-        self.use_groq = use_groq
         self.location = location  # crow's home location
         self.observation_memory = ObservationMemory()
         self.paper_memory = PaperMemory()
@@ -41,13 +41,24 @@ class Crow:
             "get_sun_times": get_sun_times,
             "analyze_temporal_patterns": analyze_temporal_patterns
         }
+
+        if provider_config is None:
+            provider_config = {
+                "primary": "groq",
+                "fallback": ["nebius"],
+                "models": {
+                    "groq": "llama-3.1-70b-versatile",
+                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                },
+                "timeout": 30,
+                "use_cloud": True
+            }
+
+        self.provider_config = provider_config
+        self.use_cloud = provider_config.get("use_cloud", True)
         
-        if use_groq:
-            api_key = os.getenv("GROQ_API_KEY")
-            if not api_key:
-                raise ValueError("GROQ_API_KEY not found in environment")
-            self.client = Groq(api_key=api_key)
-            self.model = "openai/gpt-oss-120b"
+        if self.use_cloud:
+            self._init_clients()
         else:
             self.model = "llama3.1:8b"
         
@@ -104,26 +115,31 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
 
         return "\n".join(summary_lines) + "\n"
 
-    async def respond(self, 
-                     message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
-        """Generate a response."""
-        if self.use_groq:
-            return await self._respond_groq(message, conversation_history)
-        else:
-            return self._respond_ollama(message, conversation_history)
-    
-    async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:
-        """Use Groq API with tools."""
-        
-        messages = [{"role": "system", "content": self.get_system_prompt()}]
-        
-        if history:
-            messages.extend(history[-5:])
-        
-        messages.append({"role": "user", "content": message})
-        
-        tools = [
+    def _init_clients(self) -> None:
+        """Initialize remote provider clients."""
+        self.clients = {}
+        api_timeout = self.provider_config.get("timeout", 30)
+
+        if os.getenv("GROQ_API_KEY"):
+            self.clients["groq"] = Groq(
+                api_key=os.getenv("GROQ_API_KEY"),
+                timeout=api_timeout
+            )
+
+        if os.getenv("NEBIUS_API_KEY"):
+            self.clients["nebius"] = OpenAI(
+                api_key=os.getenv("NEBIUS_API_KEY"),
+                base_url="https://api.tokenfactory.nebius.com/v1",
+                timeout=api_timeout
+            )
+
+        if not self.clients:
+            raise ValueError(f"{self.name}: No LLM provider API keys found in environment")
+
+        logger.info("%s initialized with providers: %s", self.name, list(self.clients.keys()))
+
+    def _get_tool_definitions(self) -> List[Dict]:
+        return [
             {
                 "type": "function",
                 "function": {
@@ -222,18 +238,70 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
                 }
             }
         ]
+
+    def _call_llm(self,
+                  messages: List[Dict],
+                  tools: Optional[List[Dict]] = None,
+                  temperature: float = 0.7,
+                  max_tokens: int = 150):
+        """Call configured LLM providers with fallback order."""
+        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
+        last_error = None
+
+        for provider in providers:
+            client = self.clients.get(provider)
+            if not client:
+                logger.debug("%s: skipping provider %s (not configured)", self.name, provider)
+                continue
+
+            try:
+                model = self.provider_config["models"][provider]
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto" if tools else None,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                logger.info("%s successfully used %s", self.name, provider)
+                return response, provider
+            except Exception as exc:
+                last_error = exc
+                logger.warning("%s: %s failed (%s)", self.name, provider, str(exc)[:100])
+                continue
+
+        raise RuntimeError(f"All LLM providers failed for {self.name}. Last error: {last_error}")
+
+    async def respond(self, 
+                     message: str,
+                     conversation_history: Optional[List[Dict]] = None) -> str:
+        """Generate a response."""
+        if self.use_cloud:
+            return await self._respond_cloud(message, conversation_history)
+        return self._respond_ollama(message, conversation_history)
+    
+    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Use configured cloud providers with tools."""
+        
+        messages = [{"role": "system", "content": self.get_system_prompt()}]
+        
+        if history:
+            messages.extend(history[-5:])
+        
+        messages.append({"role": "user", "content": message})
+        
+        tools = self._get_tool_definitions()
         
         # first LLM call
-        response = self.client.chat.completions.create(
-            model=self.model,
+        first_response, _ = self._call_llm(
             messages=messages,
             tools=tools,
-            tool_choice="auto",
             temperature=0.7,  # Slightly lower for Crow's measured personality
             max_tokens=150
         )
         
-        choice = response.choices[0]
+        choice = first_response.choices[0]
         
         # check if model wants to use a tool
         if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
@@ -275,8 +343,7 @@ When discussing weather, birds, air quality, or natural patterns, use your tools
                 })
                 
                 # second LLM call with observation results
-                final_response = self.client.chat.completions.create(
-                    model=self.model,
+                final_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.7,
                     max_tokens=200

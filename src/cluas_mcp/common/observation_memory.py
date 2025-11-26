@@ -14,10 +14,11 @@ class ObservationMemory:
 
     def __init__(
         self, 
-        default_location: str = None, 
-        memory_file: Optional[Path] = None):        
+        location: str = None, 
+        memory_file: Optional[Path] = None
+       ):        
         
-        self.default_location = default_location
+        self.location = location
         self.memory_file = Path(memory_file) if memory_file else Path.home() / ".cluas_mcp" / "observation_memory.json"
         self._ensure_data_dir()
         
@@ -127,7 +128,7 @@ class ObservationMemory:
         cutoff = datetime.now(UTC) - timedelta(days=days)
         results = self.get_by_date_range(start_date=cutoff)
         if location == "USE_DEFAULT":
-            location = self.default_location
+            location = self.location
         if location:
             location_lower = location.lower()
             results = [
@@ -145,7 +146,7 @@ class ObservationMemory:
             if tag in obs.get("tags", [])
         ]
         if location == "USE_DEFAULT":
-            location = self.default_location
+            location = self.location
         if location:
             location_lower = location.lower()
             results = [
@@ -217,14 +218,14 @@ class ObservationMemory:
         """
         observations = self.search_observations(
             obs_type=obs_type,
-            location=location if location != "USE_DEFAULT" else self.default_location,
+            location=location if location != "USE_DEFAULT" else self.location,
             days=days
         )
         
         if not observations:
             return {
                 "type": obs_type,
-                "location": location if location != "USE_DEFAULT" else self.default_location,
+                "location": location if location != "USE_DEFAULT" else self.location,
                 "days": days,
                 "count": 0,
                 "message": "No observations found for analysis"

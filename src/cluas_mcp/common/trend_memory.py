@@ -21,7 +21,7 @@ class TrendMemory:
         Args:
             location: Default location context for entries (e.g., "Brooklyn")
         """
-        self.default_location = location
+        self.location = location
         self.memory_file = Path(memory_file) if memory_file else Path.home() / ".cluas_mcp" / "trend_memory.json"
 
         self._ensure_data_dir()
@@ -76,7 +76,7 @@ class TrendMemory:
             "type": search_type,
             "query": query,
             "topic": None,
-            "location": location or self.default_location,
+            "location": location or self.location,
             "data": results,
             "tags": tags or [],
             "notes": notes
@@ -116,7 +116,7 @@ class TrendMemory:
             "type": "trending_topic",
             "query": None,
             "topic": topic,
-            "location": location or self.default_location,
+            "location": location or self.location,
             "data": trend_data,
             "tags": tags or [],
             "notes": notes

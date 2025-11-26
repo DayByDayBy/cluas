@@ -18,7 +18,7 @@ class Magpie:
         self.name = "Magpie"
         self.use_groq = use_groq
         self.tools = ["search_web", "find_trending_topics"]
-        self.trend_memory - TrendMemory()
+        self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
         
@@ -63,8 +63,47 @@ When you need current information or want to share something interesting, use yo
         if self.use_groq:
             return await self._respond_groq(message, conversation_history)
         else:
-            # Ollama not implemented yet
-            return "Oh wow, that's so interesting! Let me look that up for you! 🪶"
+            return self._respond_ollama(message, conversation_history)
+    
+    def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Use Ollama."""
+        prompt = self._build_prompt(message, history)
+        
+        response = requests.post('http://localhost:11434/api/generate', json={
+            "model": self.model,
+            "prompt": prompt,
+            "system": self.get_system_prompt(),
+            "stream": False,
+            "options": {
+                "temperature": 0.8,
+                "num_predict": 200,
+            }
+        })
+        
+        if response.status_code != 200:
+            return f"[Magpie is having technical difficulties: {response.status_code}]"
+        
+        result = response.json()
+        return result.get('response', '').strip()
+    
+    def _build_prompt(self, message: str, history: Optional[List[Dict]] = None) -> str:
+        """Build prompt for Ollama."""
+        if not history:
+            return f"User: {message}\n\nMagpie:"
+        
+        prompt_parts = []
+        for msg in history[-5:]:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '')
+            if role == 'user':
+                prompt_parts.append(f"User: {content}")
+            elif role == 'assistant':
+                prompt_parts.append(f"Magpie: {content}")
+        
+        prompt_parts.append(f"User: {message}")
+        prompt_parts.append("Magpie:")
+        
+        return "\n\n".join(prompt_parts)
     
     async def _respond_groq(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use Groq API with tools"""

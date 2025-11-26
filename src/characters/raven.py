@@ -236,10 +236,26 @@ When you need to verify information or find current news, use your tools!"""
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Placeholder for local inference without tool calls."""
         prompt = self._build_prompt(message, history)
-        return (
-            "I'm double-checking that with my own notes. "
-            "Hang tight while I look for corroborating sources."
-        )
+        
+        # requests import has to be at the top of the file
+        import requests
+
+        response = requests.post('http://localhost:11434/api/generate', json={
+            "model": self.model,
+            "prompt": prompt,
+            "system": self.get_system_prompt(),
+            "stream": False,
+            "options": {
+                "temperature": 0.8,
+                "num_predict": 200,
+            }
+        })
+        
+        if response.status_code != 200:
+            return f"[Raven is having technical difficulties: {response.status_code}]"
+        
+        result = response.json()
+        return result.get('response', '').strip()
 
     def _build_prompt(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Construct a lightweight conversation transcript for local models."""

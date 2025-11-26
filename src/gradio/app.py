@@ -4,6 +4,7 @@ import asyncio
 import html
 import re
 import itertools
+from pathlib import Path
 from typing import List, Tuple
 from src.characters.corvus import Corvus
 from src.characters.magpie import Magpie
@@ -44,9 +45,24 @@ def parse_mentions(message: str) -> List[str] | None:
 
 def format_message(character_name: str, message: str) -> Tuple[str, str]:
     """Format message with character name and emoji"""
+
     emoji = CHARACTER_EMOJIS.get(character_name, "💬")
-    formatted = f"{emoji} **{character_name}**: {message}"
+    
+    COLORS = {
+        "Corvus": "#2596be",  # blue
+        "Magpie": "#c91010",  # red
+        "Raven": "#2E8B57",   # green
+        "Crow": "#1C1C1C",    # dark gray
+        "User": "#FFD700",    # gold/yellow
+    }
+    
+    color = COLORS.get(character_name, "#FFFFFF")  # Default to white if not found
+    formatted = f'{emoji} <span style="color:{color}; font-weight:bold;">{character_name}</span>: {message}'
+    
     return formatted, character_name
+
+
+
 
 async def get_character_response(character, message: str, history: List) -> str:
     """Get response from a character with graceful error handling"""
@@ -132,20 +148,18 @@ async def chat_fn(message: str, history: list):
 with gr.Blocks(title="cluas_huginn") as demo:
     gr.Markdown("""
     # 🐦‍⬛ cluas_huggin - a dialectic deliberation engine
-    ## *A gathering of guides, a council of counsels*
+    ## *A gathering of guides, a council of counsels*""")
     
-    Chat with the council of four corvid experts:
-    - **Corvus** 🐦‍⬛ (Glasgow, Scotland; Melancholic - Scholar): Academic researcher
-    - **Magpie** 🪶 (Brooklyn, NY; Sanguine - Enthusiast): Trend-spotter and fact-finder
-    - **Raven** 🦅 (Seattle, WA; Choleric - Activist): News monitor and fact-checker
-    - **Crow** 🕊️ (Tokyo, Japan; Phlegmatic - Observer): Nature watcher and pattern analyzer
-    """)
+    avatar_folder = Path("avatars")
+    avatar_images = [str(avatar_folder / f"{name.lower()}.png") for name, *_ in CHARACTERS]
     
     chatbot = gr.Chatbot(
         label="Council Discussion",
         height=600,
         show_label=True,
-        avatar_images=(None, None),  # TODO: add custom avatars later
+        avatar_images=tuple(avatar_images),
+        user_avatar="avatars/user.png"
+        
     )
     
     with gr.Row():

@@ -373,6 +373,20 @@ async def deliberate(
         "history": history_output,
     }
 
+# theme stuff
+
+theme = gr.themes.Soft(
+    primary_hue=gr.themes.colors.violet,       
+    secondary_hue=gr.themes.colors.sky,       # accent
+    neutral_hue=gr.themes.colors.slate,       # text, backgrounds, neutral elements
+
+    spacing_size=gr.themes.sizes.spacing_md,  # mid spacing
+    radius_size=gr.themes.sizes.radius_md,    # wee bit rounded
+    text_size=gr.themes.sizes.text_md,        # readable body text
+
+    font=gr.themes.GoogleFont("Space Grotesk"),           # main font: clarity & style
+    font_mono=gr.themes.GoogleFont("IBM Plex Mono")       # monospace: system/chat/code
+)
 
 # create Gradio interface
 with gr.Blocks(title="Cluas Huginn", theme=gr.themes.Base(theme="dark")) as demo:
@@ -463,4 +477,4 @@ if __name__ == "__main__":
         sys.exit(0)
     
     demo.queue() 
-    demo.launch(mcp_server=True)
+    demo.launch(mcp_server=True, theme=theme)

@@ -199,11 +199,10 @@ class Corvus:
                 
                 try:
                     loop = asyncio.get_running_loop()
-                except RuntimeError:  # ie  no running loop
+                except RuntimeError:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                 # call the search function (it's sync, so use executor)
-                loop = asyncio.get_event_loop()
                 tool_func = self.tool_functions[tool_name]
                 search_results = await loop.run_in_executor(None, lambda: tool_func(**args))
                 

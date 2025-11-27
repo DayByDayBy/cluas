@@ -15,11 +15,6 @@ from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
 from src.prompts.character_prompts import magpie_system_prompt
 
-try:
-    from src.cluas_mcp.web.quick_facts import get_quick_facts
-except ImportError:  # pragma: no cover - optional dependency
-    get_quick_facts = None
-
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -92,13 +87,13 @@ class Magpie:
                 "type": "function",
                 "function": {
                     "name": "explore_web",
-                    "description": "Search the web for current information",
+                    "description": "Search the web for emerging stories, patterns, and unexpected angles",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Search query string"
+                                "description": "Search query"
                             }
                         },
                         "required": ["query"]
@@ -109,13 +104,13 @@ class Magpie:
                 "type": "function",
                 "function": {
                     "name": "get_trends",
-                    "description": "Find trending topics in a given category",
+                    "description": "Get current trending topics in a category",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "category": {
                                 "type": "string",
-                                "description": "Category to search for trends (e.g., 'general', 'technology', 'science')",
+                                "description": "Trend category (optional, e.g., 'general', 'tech', 'culture')",
                                 "default": "general"
                             }
                         },
@@ -126,14 +121,24 @@ class Magpie:
             {
                 "type": "function",
                 "function": {
-                    "name": "get_quick_facts",
-                    "description": "Get quick facts about a topic",
+                    "name": "explore_trend_angles",
+                    "description": "Deep dive on a trend: explore from multiple angles (why it's trending, cultural narrative, local context, criticism). Returns structured data for synthesis.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "topic": {
                                 "type": "string",
-                                "description": "Topic to get facts about"
+                                "description": "Trend or topic to explore"
+                            },
+                            "location": {
+                                "type": "string",
+                                "description": "Optional location for local angle (e.g., 'Brooklyn', 'Tokyo')"
+                            },
+                            "depth": {
+                                "type": "string",
+                                "enum": ["light", "medium", "deep"],
+                                "description": "Exploration depth: light (quick), medium (standard), deep (thorough)",
+                                "default": "medium"
                             }
                         },
                         "required": ["topic"]
@@ -270,12 +275,13 @@ class Magpie:
                     trending_results = await loop.run_in_executor(None, lambda: tool_func(category))
                     tool_result = self._format_trending_topics_for_llm(trending_results)
             
-            elif tool_name == "get_quick_facts":
+            elif tool_name == "explore_trend_angles":
                 topic = args.get("topic")
-                tool_func = self.tool_functions.get(tool_name)
-                if tool_func and topic:
-                    facts_results = await loop.run_in_executor(None, lambda: tool_func(topic))
-                    tool_result = self._format_quick_facts_for_llm(facts_results)
+                location_arg = args.get("location")
+                depth = args.get("depth", "medium")
+                if topic:
+                    angles_results = await self.explore_trend_angles(topic, location_arg, depth)
+                    tool_result = self._format_trend_angles_for_llm(angles_results)
             
             if tool_result:
                 # Add tool call and result to conversation

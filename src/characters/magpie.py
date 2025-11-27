@@ -23,16 +23,15 @@ class Magpie:
     def __init__(self, provider_config: Optional[Dict] = None, location: str = "Brooklyn, NY"):
         self.name = "Magpie"
         self.location = location
-        self.tools = ["explore_web", "get_trends", "get_quick_facts"]
+        self.tools = ["explore_web", "get_trends", "explore_trend_angles"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
         self.tool_functions = {
             "explore_web": explore_web,
-            "get_trends": get_trends
+            "get_trends": get_trends,
+            "explore_trend_angles": self.explore_trend_angles
         }
-        if get_quick_facts:
-            self.tool_functions["get_quick_facts"] = get_quick_facts
         
         if provider_config is None:
             provider_config = {
@@ -57,6 +56,63 @@ class Magpie:
     def get_system_prompt(self) -> str:
         recent_trends = self.trend_memory.get_recent(days=7) if hasattr(self, 'trend_memory') else None
         return magpie_system_prompt(location=self.location, recent_trends=recent_trends)
+
+    async def explore_trend_angles(self, topic: str, location: Optional[str] = None, depth: str = "medium") -> Dict:
+        """
+        Explore a trend from multiple angles: trending status, why it's trending, 
+        cultural narrative, local context, and criticism.
+        
+        Args:
+            topic: The trend/topic to explore
+            location: Optional location for local angle
+            depth: "light" (quick), "medium" (standard), or "deep" (thorough)
+        
+        Returns:
+            Dict with keys: trending, surface_drivers, narrative, local_angle (if location), criticism (if deep)
+        """
+        loop = asyncio.get_event_loop()
+        
+        # Build task list based on depth
+        tasks = [
+            loop.run_in_executor(None, lambda: get_trends(topic)),
+            loop.run_in_executor(None, lambda: explore_web(f"why {topic} trending 2025")),
+        ]
+        
+        if depth in ["medium", "deep"]:
+            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} cultural shift 2025")))
+        
+        if location:
+            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} {location} 2025")))
+        
+        if depth == "deep":
+            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} criticism problems 2025")))
+        
+        # Execute all tasks in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Parse results
+        angles = {
+            'trending': results[0] if not isinstance(results[0], Exception) else None,
+            'surface_drivers': results[1] if not isinstance(results[1], Exception) else None,
+        }
+        
+        result_idx = 2
+        if depth in ["medium", "deep"]:
+            angles['narrative'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+            result_idx += 1
+        
+        if location:
+            angles['local_angle'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+            result_idx += 1
+        
+        if depth == "deep":
+            angles['criticism'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+        
+        return angles
+
+
+
+
 
     def _init_clients(self) -> None:
         """Initialize remote provider clients."""
@@ -350,18 +406,48 @@ class Magpie:
         
         return "\n".join(output)
     
-    def _format_quick_facts_for_llm(self, results: dict) -> str:
-        """Format quick facts into text for the LLM to read."""
+    def _format_trend_angles_for_llm(self, angles: dict) -> str:
+        """Format multi-angle trend exploration into text for the LLM to synthesize."""
         output = []
-        facts = results.get("facts", [])
-        topic = results.get("topic", "Unknown topic")
         
-        if facts:
-            output.append(f"Quick Facts about {topic}:")
-            for i, fact in enumerate(facts, 1):
-                output.append(f"{i}. {fact}")
-        else:
-            return f"No facts found about {topic}."
+        if angles.get('trending'):
+            trending_data = angles['trending']
+            topics = trending_data.get('trending_topics', [])
+            if topics:
+                output.append("TRENDING STATUS:")
+                for topic in topics[:2]:
+                    output.append(f"  - {topic.get('topic', 'Unknown')}: {topic.get('description', '')[:80]}...")
         
-        return "\n".join(output)
-
+        if angles.get('surface_drivers'):
+            drivers = angles['surface_drivers']
+            results = drivers.get('results', [])
+            if results:
+                output.append("\nWHY IT'S TRENDING:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('title', 'No title')}: {result.get('snippet', '')[:100]}...")
+        
+        if angles.get('narrative'):
+            narrative = angles['narrative']
+            results = narrative.get('results', [])
+            if results:
+                output.append("\nCULTURAL NARRATIVE:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('snippet', '')[:100]}...")
+        
+        if angles.get('local_angle'):
+            local = angles['local_angle']
+            results = local.get('results', [])
+            if results:
+                output.append("\nLOCAL ANGLE:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('snippet', '')[:100]}...")
+        
+        if angles.get('criticism'):
+            criticism = angles['criticism']
+            results = criticism.get('results', [])
+            if results:
+                output.append("\nCRITICISM/PUSHBACK:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('snippet', '')[:100]}...")
+        
+        return "\n".join(output) if output else "No trend angles found."

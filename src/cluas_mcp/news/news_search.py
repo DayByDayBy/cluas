@@ -86,7 +86,7 @@ def _verify_news_duckduckgo(query: str, max_results: int, api_key: str) -> dict:
     search = DuckDuckGoSearch({
         "q": query,
         "api_key": api_key
-    })
+        })
     data = search.get_dict()
     articles = []
     for item in data.get("organic_results", [])[:max_results]:

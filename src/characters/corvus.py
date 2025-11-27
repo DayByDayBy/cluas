@@ -14,14 +14,13 @@ from src.cluas_mcp.common.observation_memory import ObservationMemory
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-
 class Corvus:
     
     def __init__(self, provider_config: Optional[Dict] = None, location: str = "Glasgow, Scotland"):
         self.name = "Corvus"
         self.location = location
         self.paper_memory = PaperMemory() 
-        self.observation_memory = ObservationMemory(location=location)
+        self.observation_memory = ObservationMemory(location=self.location)
         self.tool_functions = {
             "academic_search": academic_search
         }
@@ -45,46 +44,57 @@ class Corvus:
             self._init_clients()
         else:
             self.model = "llama3.1:8b"
+     
+    def corvus_system_prompt(
+        self,
+        recent_papers: list = None,
+    ) -> str:
+        """
+        Generate system prompt for Corvus with optional paper memory.
+        Args:
+            recent_papers: List of dicts with keys: title, mentioned_by, date (optional)
+        """
+        memory_context = _format_paper_memory(recent_papers)
         
-    def get_system_prompt(self) -> str:
-        
-        """get system prompt with memory context"""
-        
-        recent_papers = self.paper_memory.get_recent(days=7)
-    
-        memory_context = ""
-        if recent_papers:
-            memory_context = "\n\nRECENT DISCUSSIONS:\n"
-            memory_context += "Papers mentioned in recent conversations:\n"
-            for paper in recent_papers[:5]:  # Top 5 most recent
-                memory_context += f"- {paper['title']}"
-                if paper.get('mentioned_by'):
-                    memory_context += f" (mentioned by {paper['mentioned_by']})"
-                memory_context += "\n"
-            memory_context += "\nYou can reference these if relevant to the current discussion.\n"
-        
-        
-        corvus_base_prompt = """You are Corvus, a meticulous corvid scholar and PhD student.
+        base_prompt = f"""You are Corvus, a meticulous corvid scholar and PhD student.
 
-                                TEMPERAMENT: Melancholic - analytical, cautious, thorough, introspective
-                                ROLE: Academic researcher in a corvid enthusiast group chat
+        CORE TRAITS:
+        Melancholic—analytical, cautious, thorough, introspective. You live in papers and prefer rigor over speed.
 
-                                PERSONALITY:
-                                - You cite papers when relevant: "According to Chen et al. (2019)..."
-                                - You're supposed to be writing your thesis but keep finding cool papers your friends might like
-                                - Sometimes you share papers excitedly with "This is fascinating—"
-                                - Speak precisely, a bit formal, occasionally overly academic, some slang creeps in
-                                - You fact-check claims & look for sources
+        LOCATION:
+        Based in {self.location}, but your research is fundamentally global. Location doesn't constrain your thinking.
 
-                                IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
-                                You're in a group chat, not writing a literature review. Save the deep dives for when explicitly asked.
+        VOICE & STYLE:
+        - Speak precisely and formally, with occasional academic jargon
+        - You're supposed to be writing your thesis but keep finding cool papers to share
+        - Sometimes share findings excitedly: "This is fascinating—"
+        - You fact-check claims and trust peer review, not popular sources
+        - Conversational but substantive. 2-4 sentences in group chat.
 
-                                TOOLS AVAILABLE:
-                                - academic_search: Search PubMed, ArXiv, Semantic Scholar
+        TOOL USAGE HEURISTICS:
+        When should you use academic_search?
+        → When a claim lacks peer-reviewed backing
+        → When someone references a topic you should verify
+        → When you want to cite findings precisely
+        → Strategy: HIGH BAR FOR EVIDENCE. Search only when necessary.
 
-                                When discussing scientific topics, use the search tool to find relevant papers."""
+        When should you use search_web?
+        → Rarely. Only for author names, specific paper titles, or DOI lookups
+        → Only to locate papers, not for general information
+        → Strategy: Avoid web search unless academic search fails
 
-        return corvus_base_prompt + memory_context
+        When should you use fetch_trends?
+        → Never. Trends are not your domain. You care about evidence, not viral topics.
+
+        DECISION LOGIC:
+        1. Do I have a specific claim to verify? → use academic_search
+        2. Is it about method/findings in literature? → use academic_search
+        3. Am I trying to locate a specific paper? → use search_web only
+        4. Otherwise → respond without tools (most conversations)
+
+        CONSTRAINT: Keep responses to 2-4 sentences. You're in a group chat, not writing a literature review.{memory_context}"""
+
+        return base_prompt
 
     def _init_clients(self) -> None:
         """Initialize remote provider clients."""
@@ -110,6 +120,12 @@ class Corvus:
 
         logger.info("%s initialized with providers: %s", self.name, list(self.clients.keys()))
 
+    
+    def get_system_prompt(self) -> str:
+        recent_papers = self.paper_memory.get_recent(days=7)
+        return self.corvus_system_prompt(recent_papers=recent_papers)        
+            
+            
     def _get_tool_definitions(self) -> List[Dict]:
         return [{
             "type": "function",
@@ -227,15 +243,20 @@ class Corvus:
             tool_name = tool_call.function.name
             
             if tool_name in self.tool_functions:
-                # Parse arguments
+                # parse arguments
                 args = json.loads(tool_call.function.arguments)
                 
-                # Call the search function (it's sync, so use executor)
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:  # ie  no running loop
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                # call the search function (it's sync, so use executor)
                 loop = asyncio.get_event_loop()
                 tool_func = self.tool_functions[tool_name]
                 search_results = await loop.run_in_executor(None, lambda: tool_func(**args))
                 
-                # Format results for LLM
+                # format results for LLM
                 tool_result = self._format_search_for_llm(search_results)
                 
                 # Add tool call and result to conversation
@@ -270,7 +291,6 @@ class Corvus:
         return choice.message.content.strip()
     
   
-    
     def _format_search_for_llm(self, results: dict) -> str:
         """Format search results into text for the LLM to read."""
         output = []
@@ -283,7 +303,7 @@ class Corvus:
             for i, paper in enumerate(pubmed[:3], 1):  # Top 3
                 title = paper.get("title", "No title")
                 authors = paper.get("author_str", "Unknown authors")
-                abstract = paper.get("abstract", "")[:150]  # First 150 chars
+                abstract = paper.get("abstract", "")[:150]  # first 150 chars
                 
                 output.append(f"{i}. {title} by {authors}. {abstract}...")
                 
@@ -375,3 +395,44 @@ class Corvus:
         prompt_parts.append("Corvus:")
         
         return "\n\n".join(prompt_parts)
+
+
+def _format_paper_memory(recent_papers: list = None) -> str:
+    """
+    Format paper memory for Corvus.
+    
+    Args:
+        recent_papers: List of dicts with at minimum 'title' key.
+                      Optional keys: 'mentioned_by', 'date'
+    
+    Returns:
+        Formatted string to append to system prompt, or empty string if no papers.
+    
+    Decision:
+        - Show max 5 papers (enough context without bloat)
+        - Include who mentioned them (social context)
+        - Include date if available (recency)
+        - Never duplicate the full prompt, just memory snippet
+    """
+    if not recent_papers:
+        return ""
+    
+    lines = [
+        "\n\nRECENT DISCUSSIONS:",
+        "Papers mentioned in recent conversations:",
+    ]
+    
+    for paper in recent_papers[:5]:
+        title = paper.get('title', 'Untitled')
+        mentioned_by = paper.get('mentioned_by', '')
+        date = paper.get('date', '')
+        
+        line = f"- {title}"
+        if mentioned_by:
+            line += f" (mentioned by {mentioned_by})"
+        if date:
+            line += f" [{date}]"
+        lines.append(line)
+    
+    lines.append("\nYou can reference these if relevant to the current discussion.\n")
+    return "\n".join(lines)

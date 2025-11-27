@@ -20,6 +20,11 @@ magpie = Magpie(location="Brooklyn, NY")
 raven = Raven(location="Seattle, WA")
 crow = Crow(location="Tokyo, Japan")
 
+PHASE_INSTRUCTIONS = {
+    "thesis": "Present your initial perspective. Offer concrete signals, data, or references that support your stance.",
+    "antithesis": "Critique or challenge earlier answers. Highlight blind spots, weak evidence, or alternative interpretations.",
+    "synthesis": "Integrate the best ideas so far. Resolve tensions and propose a balanced, actionable view.",
+}
 
 CUSTOM_CSS = """
 #deliberate-btn {
@@ -203,13 +208,7 @@ async def chat_fn(message: str, history: list):
 
 
 def _phase_instruction(phase: str) -> str:
-    instructions = {
-        "thesis": "Present your initial perspective. Offer concrete signals, data, or references that support your stance.",
-        "antithesis": "Critique or challenge earlier answers. Highlight blind spots, weak evidence, or alternative interpretations.",
-        "synthesis": "Integrate the best ideas so far. Resolve tensions and propose a balanced, actionable view.",
-    }
-    return instructions.get(phase, "")
-
+    return PHASE_INSTRUCTIONS.get(phase, "")
 
 def _build_phase_prompt(
     *,

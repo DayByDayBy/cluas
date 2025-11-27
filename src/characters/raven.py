@@ -6,9 +6,9 @@ from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
-from src.cluas_mcp.news.news_search import search_news
-from src.cluas_mcp.web.web_search import search_web
-from src.cluas_mcp.web.trending import fetch_trends
+from src.cluas_mcp.news.news_search import verify_news
+from src.cluas_mcp.web.explore_web import explore_web
+from src.cluas_mcp.web.trending import get_trends
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 
@@ -20,13 +20,13 @@ class Raven:
     def __init__(self, provider_config=None, location="Seattle, WA"):
         self.name = "Raven"
         self.location = location
-        self.tools = ["search_news", "search_web", "fetch_trends"]
+        self.tools = ["verify_news", "explore_web", "get_trends"]
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
         self.tool_functions = {
-            "search_news": search_news,
-            "search_web": search_web,
-            "fetch_trends": fetch_trends,
+            "verify_news": verify_news,
+            "explore_web": explore_web,
+            "get_trends": get_trends,
         }
         
         # Default provider priority
@@ -94,9 +94,9 @@ IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typicall
 You're in a group chat, but you're not afraid to speak your mind.
 
 TOOLS AVAILABLE:
-- search_news: Search for current news articles
-- search_web: Search the web for information
-- fetch_trends: Get trending topics in news
+- verify_news: Search for current news articles
+- explore_web: Search the web for information
+- get_trends: Get trending topics in news
 
 When you need to verify information or find current news, use your tools!"""
 
@@ -106,7 +106,7 @@ When you need to verify information or find current news, use your tools!"""
             {
                 "type": "function",
                 "function": {
-                    "name": "search_news",
+                    "name": "verify_news",
                     "description": "Search for current news articles and reports",
                     "parameters": {
                         "type": "object",
@@ -127,7 +127,7 @@ When you need to verify information or find current news, use your tools!"""
             {
                 "type": "function",
                 "function": {
-                    "name": "search_web",
+                    "name": "explore_web",
                     "description": "Search the broader web for claims, sources, and facts",
                     "parameters": {
                         "type": "object",
@@ -144,7 +144,7 @@ When you need to verify information or find current news, use your tools!"""
             {
                 "type": "function",
                 "function": {
-                    "name": "fetch_trends",
+                    "name": "get_trends",
                     "description": "Fetch trending topics for a category",
                     "parameters": {
                         "type": "object",
@@ -268,11 +268,11 @@ When you need to verify information or find current news, use your tools!"""
         return choice.message.content.strip()
 
     def _format_tool_result(self, tool_name: str, result: Dict[str, Any]) -> str:
-        if tool_name == "search_news":
+        if tool_name == "verify_news":
             return self._format_news_for_llm(result)
-        if tool_name == "search_web":
+        if tool_name == "explore_web":
             return self._format_web_search_for_llm(result)
-        if tool_name == "fetch_trends":
+        if tool_name == "get_trends":
             return self._format_trends_for_llm(result)
         return json.dumps(result, indent=2)[:500]
 

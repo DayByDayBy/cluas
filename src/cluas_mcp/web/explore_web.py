@@ -3,7 +3,7 @@ from duckduckgo_search import DDGS
 
 logger = logging.getLogger(__name__)
 
-def search_web(query: str) -> dict:
+def explore_web(query: str) -> dict:
     """
     Search web using DuckDuckGo.
     No API key needed, no rate limits.
@@ -31,7 +31,7 @@ def search_web(query: str) -> dict:
     
     except Exception as e:
         logger.error(f"Web search error: {e}")
-        return _mock_search_web(query)
+        return _mock_explore_web(query)
 
 def _extract_domain(url: str) -> str:
     try:
@@ -40,7 +40,7 @@ def _extract_domain(url: str) -> str:
     except:
         return "unknown"
 
-def _mock_search_web(query: str) -> dict:
+def _mock_explore_web(query: str) -> dict:
     """
     Search the web for current information.
     

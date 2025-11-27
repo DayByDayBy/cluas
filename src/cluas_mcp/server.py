@@ -6,9 +6,9 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
-from src.cluas_mcp.web.web_search import search_web
-from src.cluas_mcp.web.trending import fetch_trends
-from src.cluas_mcp.news.news_search_entrypoint import search_news
+from src.cluas_mcp.web.explore_web import explore_web
+from src.cluas_mcp.web.trending import get_trends
+from src.cluas_mcp.news.news_search_entrypoint import verify_news
 from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
 
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +37,7 @@ async def list_tools() -> list[Tool]:
         ),
         # Magpie tools
         Tool(
-            name="search_web",
+            name="explore_web",
             description="Search the web for current information",
             inputSchema={
                 "type": "object",
@@ -51,7 +51,7 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
-            name="fetch_trends",
+            name="get_trends",
             description="Find trending topics in a given category",
             inputSchema={
                 "type": "object",
@@ -81,7 +81,7 @@ async def list_tools() -> list[Tool]:
         ),
         # Raven tools
         Tool(
-            name="search_news",
+            name="verify_news",
             description="Search for current news articles",
             inputSchema={
                 "type": "object",
@@ -209,17 +209,17 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=formatted)]
     
     # Magpie tools
-    elif tool_name == "search_web":
+    elif tool_name == "explore_web":
         query = arguments.get("query")
         if not query:
-            raise ValueError("query is required for search_web")
-        results = await loop.run_in_executor(None, search_web, query)
+            raise ValueError("query is required for explore_web")
+        results = await loop.run_in_executor(None, explore_web, query)
         formatted = format_web_search_results(results)
         return [TextContent(type="text", text=formatted)]
     
-    elif tool_name == "fetch_trends":
+    elif tool_name == "get_trends":
         category = arguments.get("category", "general")
-        results = await loop.run_in_executor(None, fetch_trends, category)
+        results = await loop.run_in_executor(None, get_trends, category)
         formatted = format_trending_topics(results)
         return [TextContent(type="text", text=formatted)]
     
@@ -232,12 +232,12 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=formatted)]
     
     # Raven tools
-    elif tool_name == "search_news":
+    elif tool_name == "verify_news":
         query = arguments.get("query")
         if not query:
-            raise ValueError("query is required for search_news")
+            raise ValueError("query is required for verify_news")
         max_results = arguments.get("max_results", 5)
-        results = await loop.run_in_executor(None, search_news, query, max_results)
+        results = await loop.run_in_executor(None, verify_news, query, max_results)
         formatted = format_news_results(results)
         return [TextContent(type="text", text=formatted)]
     

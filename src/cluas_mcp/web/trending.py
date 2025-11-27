@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def fetch_trends(category: str = "general") -> dict:
+def get_trends(category: str = "general") -> dict:
     """
     Get trending topics with cascading fallbacks:
     1. Try Google Trends (pytrends) - no API key needed
@@ -55,11 +55,11 @@ def _get_trends_from_pytrends(category: str) -> dict:
 
 def _get_trends_from_news(category: str) -> dict:
     """Secondary: Use DDG news as proxy for trends"""
-    from src.cluas_mcp.news.news_search_entrypoint import search_news
+    from src.cluas_mcp.news.news_search_entrypoint import verify_news
     
     # Search for recent popular topics in category
     search_query = category if category != "general" else "breaking news"
-    news_results = search_news(search_query, max_results=10)
+    news_results = verify_news(search_query, max_results=10)
     
     topics = []
     for article in news_results.get('articles', []):

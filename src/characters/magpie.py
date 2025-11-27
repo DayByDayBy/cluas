@@ -7,8 +7,8 @@ from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
-from src.cluas_mcp.web.web_search import search_web
-from src.cluas_mcp.web.trending import fetch_trends
+from src.cluas_mcp.web.explore_web import explore_web
+from src.cluas_mcp.web.trending import get_trends
 
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
@@ -27,13 +27,13 @@ class Magpie:
     def __init__(self, provider_config: Optional[Dict] = None, location: str = "Brooklyn, NY"):
         self.name = "Magpie"
         self.location = location
-        self.tools = ["search_web", "fetch_trends", "get_quick_facts"]
+        self.tools = ["explore_web", "get_trends", "get_quick_facts"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
         self.tool_functions = {
-            "search_web": search_web,
-            "fetch_trends": fetch_trends
+            "explore_web": explore_web,
+            "get_trends": get_trends
         }
         if get_quick_facts:
             self.tool_functions["get_quick_facts"] = get_quick_facts
@@ -76,7 +76,7 @@ IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typicall
 You're in a group chat, so keep it fun and engaging!
 
 TOOLS AVAILABLE:
-- search_web: Search the web for current information
+- explore_web: Search the web for current information
 - fetch_trend_topics: Find what's trending right now
 - get_quick_facts: Get quick facts about any topic
 
@@ -110,7 +110,7 @@ When you need current information or want to share something interesting, use yo
             {
                 "type": "function",
                 "function": {
-                    "name": "search_web",
+                    "name": "explore_web",
                     "description": "Search the web for current information",
                     "parameters": {
                         "type": "object",
@@ -127,7 +127,7 @@ When you need current information or want to share something interesting, use yo
             {
                 "type": "function",
                 "function": {
-                    "name": "fetch_trends",
+                    "name": "get_trends",
                     "description": "Find trending topics in a given category",
                     "parameters": {
                         "type": "object",
@@ -275,14 +275,14 @@ When you need current information or want to share something interesting, use yo
             tool_result = None
             
             # Call the appropriate tool
-            if tool_name == "search_web":
+            if tool_name == "explore_web":
                 query = args.get("query")
                 tool_func = self.tool_functions.get(tool_name)
                 if tool_func and query:
                     search_results = await loop.run_in_executor(None, lambda: tool_func(query))
                     tool_result = self._format_web_search_for_llm(search_results)
             
-            elif tool_name == "fetch_trends":
+            elif tool_name == "get_trends":
                 category = args.get("category", "general")
                 tool_func = self.tool_functions.get(tool_name)
                 if tool_func:

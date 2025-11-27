@@ -5,7 +5,7 @@ from newsapi import NewsApiClient
 
 logger = logging.getLogger(__name__)
 
-def search_news(query: str, max_results: int = 5) -> dict:
+def verify_news(query: str, max_results: int = 5) -> dict:
     """
     Search news with cascading fallbacks:
     1. Try NewsAPI (primary)
@@ -16,7 +16,7 @@ def search_news(query: str, max_results: int = 5) -> dict:
     # Try NewsAPI
     try:
         logger.info(f"Attempting NewsAPI for: {query}")
-        result = search_news_newsapi(query, max_results)
+        result = verify_news_newsapi(query, max_results)
         if result["total_results"] > 0:
             return result
     except Exception as e:
@@ -27,7 +27,7 @@ def search_news(query: str, max_results: int = 5) -> dict:
     if api_key:
         try:
             logger.info(f"Attempting SerpAPI DuckDuckGo for: {query}")
-            result = _search_news_duckduckgo(query, max_results, api_key)
+            result = _verify_news_duckduckgo(query, max_results, api_key)
             if result["total_results"] > 0:
                 return result
         except Exception as e:
@@ -37,7 +37,7 @@ def search_news(query: str, max_results: int = 5) -> dict:
     if api_key:
         try:
             logger.info(f"Attempting SerpAPI Google News for: {query}")
-            result = _search_news_google(query, max_results, api_key)
+            result = _verify_news_google(query, max_results, api_key)
             if result["total_results"] > 0:
                 return result
         except Exception as e:
@@ -48,7 +48,7 @@ def search_news(query: str, max_results: int = 5) -> dict:
     return _mock_news(query, max_results)
 
 # --- Helper functions (unchanged) ---
-def search_news_newsapi(query: str, max_results: int = 5) -> dict:
+def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
     """Search news using NewsAPI."""
     api_key = os.getenv("NEWS_API_KEY")
     if not api_key:
@@ -81,7 +81,7 @@ def search_news_newsapi(query: str, max_results: int = 5) -> dict:
         logger.error(f"NewsAPI error: {e}")
         raise
 
-def _search_news_duckduckgo(query: str, max_results: int, api_key: str) -> dict:
+def _verify_news_duckduckgo(query: str, max_results: int, api_key: str) -> dict:
     """Search using SerpAPI DuckDuckGo (general search)"""
     search = DuckDuckGoSearch({
         "q": query,
@@ -105,7 +105,7 @@ def _search_news_duckduckgo(query: str, max_results: int, api_key: str) -> dict:
         "source": "duckduckgo_via_serpapi"
     }
 
-def _search_news_google(query: str, max_results: int, api_key: str) -> dict:
+def _verify_news_google(query: str, max_results: int, api_key: str) -> dict:
     """Search using SerpAPI Google News"""
     search = GoogleSearch({
         "engine": "google_news",
@@ -131,7 +131,7 @@ def _search_news_google(query: str, max_results: int, api_key: str) -> dict:
         "source": "google_news_via_serpapi"
     }
 
-def _search_news_bing(query: str, max_results: int, api_key: str) -> dict:
+def _verify_news_bing(query: str, max_results: int, api_key: str) -> dict:
     """Search using SerpAPI Bing News"""
     search = BingSearch({
         "q": query,

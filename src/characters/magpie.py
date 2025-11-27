@@ -13,11 +13,7 @@ from src.cluas_mcp.web.trending import get_trends
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
-
-try:
-    from src.cluas_mcp.web.quick_facts import get_quick_facts
-except ImportError:  # pragma: no cover - optional dependency
-    get_quick_facts = None
+from src.prompts.character_prompts import magpie_system_prompt
 
 
 load_dotenv()
@@ -27,16 +23,15 @@ class Magpie:
     def __init__(self, provider_config: Optional[Dict] = None, location: str = "Brooklyn, NY"):
         self.name = "Magpie"
         self.location = location
-        self.tools = ["explore_web", "get_trends", "get_quick_facts"]
+        self.tools = ["explore_web", "get_trends", "explore_trend_angles"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
         self.tool_functions = {
             "explore_web": explore_web,
-            "get_trends": get_trends
+            "get_trends": get_trends,
+            "explore_trend_angles": self.explore_trend_angles
         }
-        if get_quick_facts:
-            self.tool_functions["get_quick_facts"] = get_quick_facts
         
         if provider_config is None:
             provider_config = {
@@ -59,28 +54,65 @@ class Magpie:
             self.model = "llama3.1:8b"
         
     def get_system_prompt(self) -> str:
-        return """You are Magpie, an enthusiastic corvid enthusiast and social butterfly.
+        recent_trends = self.trend_memory.get_recent(days=7) if hasattr(self, 'trend_memory') else None
+        return magpie_system_prompt(location=self.location, recent_trends=recent_trends)
 
-TEMPERAMENT: Sanguine - enthusiastic, social, optimistic, curious, energetic
-ROLE: Trend-spotter and quick fact-finder in a corvid enthusiast group chat
+    async def explore_trend_angles(self, topic: str, location: Optional[str] = None, depth: str = "medium") -> Dict:
+        """
+        Explore a trend from multiple angles: trending status, why it's trending, 
+        cultural narrative, local context, and criticism.
+        
+        Args:
+            topic: The trend/topic to explore
+            location: Optional location for local angle
+            depth: "light" (quick), "medium" (standard), or "deep" (thorough)
+        
+        Returns:
+            Dict with keys: trending, surface_drivers, narrative, local_angle (if location), criticism (if deep)
+        """
+        loop = asyncio.get_event_loop()
+        
+        # Build task list based on depth
+        tasks = [
+            loop.run_in_executor(None, lambda: get_trends(topic)),
+            loop.run_in_executor(None, lambda: explore_web(f"why {topic} trending 2025")),
+        ]
+        
+        if depth in ["medium", "deep"]:
+            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} cultural shift 2025")))
+        
+        if location:
+            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} {location} 2025")))
+        
+        if depth == "deep":
+            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} criticism problems 2025")))
+        
+        # Execute all tasks in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Parse results
+        angles = {
+            'trending': results[0] if not isinstance(results[0], Exception) else None,
+            'surface_drivers': results[1] if not isinstance(results[1], Exception) else None,
+        }
+        
+        result_idx = 2
+        if depth in ["medium", "deep"]:
+            angles['narrative'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+            result_idx += 1
+        
+        if location:
+            angles['local_angle'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+            result_idx += 1
+        
+        if depth == "deep":
+            angles['criticism'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+        
+        return angles
 
-PERSONALITY:
-- You're always excited about the latest trends and discoveries
-- You love sharing quick facts and interesting tidbits
-- You're the first to jump into conversations with enthusiasm
-- You speak in an upbeat, friendly, sometimes exclamatory way
-- You use emojis occasionally and keep things light
-- You're curious about everything and love to explore
 
-IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
-You're in a group chat, so keep it fun and engaging!
 
-TOOLS AVAILABLE:
-- explore_web: Search the web for current information
-- fetch_trend_topics: Find what's trending right now
-- get_quick_facts: Get quick facts about any topic
 
-When you need current information or want to share something interesting, use your tools!"""
 
     def _init_clients(self) -> None:
         """Initialize remote provider clients."""
@@ -111,13 +143,13 @@ When you need current information or want to share something interesting, use yo
                 "type": "function",
                 "function": {
                     "name": "explore_web",
-                    "description": "Search the web for current information",
+                    "description": "Search the web for emerging stories, patterns, and unexpected angles",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Search query string"
+                                "description": "Search query"
                             }
                         },
                         "required": ["query"]
@@ -128,13 +160,13 @@ When you need current information or want to share something interesting, use yo
                 "type": "function",
                 "function": {
                     "name": "get_trends",
-                    "description": "Find trending topics in a given category",
+                    "description": "Get current trending topics in a category",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "category": {
                                 "type": "string",
-                                "description": "Category to search for trends (e.g., 'general', 'technology', 'science')",
+                                "description": "Trend category (optional, e.g., 'general', 'tech', 'culture')",
                                 "default": "general"
                             }
                         },
@@ -145,14 +177,24 @@ When you need current information or want to share something interesting, use yo
             {
                 "type": "function",
                 "function": {
-                    "name": "get_quick_facts",
-                    "description": "Get quick facts about a topic",
+                    "name": "explore_trend_angles",
+                    "description": "Deep dive on a trend: explore from multiple angles (why it's trending, cultural narrative, local context, criticism). Returns structured data for synthesis.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "topic": {
                                 "type": "string",
-                                "description": "Topic to get facts about"
+                                "description": "Trend or topic to explore"
+                            },
+                            "location": {
+                                "type": "string",
+                                "description": "Optional location for local angle (e.g., 'Brooklyn', 'Tokyo')"
+                            },
+                            "depth": {
+                                "type": "string",
+                                "enum": ["light", "medium", "deep"],
+                                "description": "Exploration depth: light (quick), medium (standard), deep (thorough)",
+                                "default": "medium"
                             }
                         },
                         "required": ["topic"]
@@ -289,12 +331,13 @@ When you need current information or want to share something interesting, use yo
                     trending_results = await loop.run_in_executor(None, lambda: tool_func(category))
                     tool_result = self._format_trending_topics_for_llm(trending_results)
             
-            elif tool_name == "get_quick_facts":
+            elif tool_name == "explore_trend_angles":
                 topic = args.get("topic")
-                tool_func = self.tool_functions.get(tool_name)
-                if tool_func and topic:
-                    facts_results = await loop.run_in_executor(None, lambda: tool_func(topic))
-                    tool_result = self._format_quick_facts_for_llm(facts_results)
+                location_arg = args.get("location")
+                depth = args.get("depth", "medium")
+                if topic:
+                    angles_results = await self.explore_trend_angles(topic, location_arg, depth)
+                    tool_result = self._format_trend_angles_for_llm(angles_results)
             
             if tool_result:
                 # Add tool call and result to conversation
@@ -363,18 +406,48 @@ When you need current information or want to share something interesting, use yo
         
         return "\n".join(output)
     
-    def _format_quick_facts_for_llm(self, results: dict) -> str:
-        """Format quick facts into text for the LLM to read."""
+    def _format_trend_angles_for_llm(self, angles: dict) -> str:
+        """Format multi-angle trend exploration into text for the LLM to synthesize."""
         output = []
-        facts = results.get("facts", [])
-        topic = results.get("topic", "Unknown topic")
         
-        if facts:
-            output.append(f"Quick Facts about {topic}:")
-            for i, fact in enumerate(facts, 1):
-                output.append(f"{i}. {fact}")
-        else:
-            return f"No facts found about {topic}."
+        if angles.get('trending'):
+            trending_data = angles['trending']
+            topics = trending_data.get('trending_topics', [])
+            if topics:
+                output.append("TRENDING STATUS:")
+                for topic in topics[:2]:
+                    output.append(f"  - {topic.get('topic', 'Unknown')}: {topic.get('description', '')[:80]}...")
         
-        return "\n".join(output)
-
+        if angles.get('surface_drivers'):
+            drivers = angles['surface_drivers']
+            results = drivers.get('results', [])
+            if results:
+                output.append("\nWHY IT'S TRENDING:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('title', 'No title')}: {result.get('snippet', '')[:100]}...")
+        
+        if angles.get('narrative'):
+            narrative = angles['narrative']
+            results = narrative.get('results', [])
+            if results:
+                output.append("\nCULTURAL NARRATIVE:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('snippet', '')[:100]}...")
+        
+        if angles.get('local_angle'):
+            local = angles['local_angle']
+            results = local.get('results', [])
+            if results:
+                output.append("\nLOCAL ANGLE:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('snippet', '')[:100]}...")
+        
+        if angles.get('criticism'):
+            criticism = angles['criticism']
+            results = criticism.get('results', [])
+            if results:
+                output.append("\nCRITICISM/PUSHBACK:")
+                for result in results[:2]:
+                    output.append(f"  - {result.get('snippet', '')[:100]}...")
+        
+        return "\n".join(output) if output else "No trend angles found."

@@ -18,6 +18,7 @@ from src.cluas_mcp.observation.observation_entrypoint import (
 )
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.paper_memory import PaperMemory
+from src.prompts.character_prompts import crow_system_prompt
 
 
 load_dotenv()
@@ -63,57 +64,8 @@ class Crow:
             self.model = "llama3.1:8b"
         
     def get_system_prompt(self) -> str:
-        base_prompt = f"""You are Crow, a calm and observant nature watcher based in {self.location}.
-
-TEMPERAMENT: Phlegmatic - calm, observant, methodical, detail-oriented, patient
-ROLE: Observer and pattern analyzer in a corvid enthusiast group chat
-
-PERSONALITY:
-- You're calm and methodical in your observations
-- You notice patterns and details others might miss
-- You speak thoughtfully and deliberately
-- You're patient and take time to analyze before responding
-- You love observing nature, weather, and bird behavior
-- You provide measured, well-considered responses
-- You often share observations like "The air quality seems different today..." or "I noticed the birds are more active this morning..."
-
-IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
-You're in a group chat, but you take your time to observe and think.
-
-TOOLS AVAILABLE:
-- get_bird_sightings: Get recent bird sightings near a location
-- get_weather_patterns: Get current weather data for a location
-- get_air_quality: Get air quality (PM2.5, etc.) for cities (tokyo, glasgow, seattle, new york)
-- get_moon_phase: Get current moon phase information
-- get_sun_times: Get sunrise/sunset times for a location
-
-When discussing weather, birds, air quality, or natural patterns, use your tools to get real data!"""
-        return base_prompt + self._build_recent_observation_context()
-
-    def _build_recent_observation_context(self) -> str:
-        """Summarize recent observations for extra context in the system prompt."""
-        try:
-            recent = self.observation_memory.get_recent(days=3)
-        except Exception as exc:
-            logger.warning("Unable to load recent observations: %s", exc)
-            return ""
-
-        if not recent:
-            return ""
-
-        counts: Dict[str, int] = {}
-        for obs in recent:
-            obs_type = obs.get("type", "observation")
-            counts[obs_type] = counts.get(obs_type, 0) + 1
-
-        summary_lines = [
-            "\n\nRECENT OBSERVATIONS:",
-            f"You have logged {len(recent)} observations in the last 3 days:"
-        ]
-        for obs_type, count in sorted(counts.items()):
-            summary_lines.append(f"- {count} × {obs_type}")
-
-        return "\n".join(summary_lines) + "\n"
+        recent_observations = self.observation_memory.get_recent(days=3)
+        return crow_system_prompt(location=self.location, recent_observations=recent_observations)
 
     def _init_clients(self) -> None:
         """Initialize remote provider clients."""

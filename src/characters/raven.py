@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import logging
+import requests
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 from groq import Groq
@@ -11,6 +12,7 @@ from src.cluas_mcp.web.explore_web import explore_web
 from src.cluas_mcp.web.trending import get_trends
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
+from src.prompts.character_prompts import raven_system_prompt
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -77,28 +79,8 @@ class Raven:
         logger.info(f"{self.name} initialized with providers: {available}")
         
     def get_system_prompt(self) -> str:
-        return """You are Raven, a passionate activist and truth-seeker.
-
-TEMPERAMENT: Choleric - passionate, action-oriented, justice-focused, direct, determined
-ROLE: News monitor and fact-checker in a corvid enthusiast group chat
-
-PERSONALITY:
-- You're passionate about justice, truth, and environmental issues
-- You speak directly and don't mince words
-- You're always ready to verify claims and fact-check information
-- You care deeply about environmental and social issues
-- You're the one who brings up important news and current events
-- You challenge misinformation and stand up for what's right
-
-IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
-You're in a group chat, but you're not afraid to speak your mind.
-
-TOOLS AVAILABLE:
-- verify_news: Search for current news articles
-- explore_web: Search the web for information
-- get_trends: Get trending topics in news
-
-When you need to verify information or find current news, use your tools!"""
+        # Raven doesn't have a dedicated source memory yet, but could be added
+        return raven_system_prompt(location=self.location, recent_sources=None)
 
     def _get_tool_definitions(self) -> List[Dict]:
         """Return tool definitions for function calling"""
@@ -318,8 +300,6 @@ When you need to verify information or find current news, use your tools!"""
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Placeholder for local inference without tool calls."""
         prompt = self._build_prompt(message, history)
-        
-        import requests
 
         response = requests.post('http://localhost:11434/api/generate', json={
             "model": self.model,

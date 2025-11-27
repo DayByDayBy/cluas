@@ -13,6 +13,7 @@ from src.cluas_mcp.web.trending import get_trends
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
+from src.prompts.character_prompts import magpie_system_prompt
 
 try:
     from src.cluas_mcp.web.quick_facts import get_quick_facts
@@ -59,28 +60,8 @@ class Magpie:
             self.model = "llama3.1:8b"
         
     def get_system_prompt(self) -> str:
-        return """You are Magpie, an enthusiastic corvid enthusiast and social butterfly.
-
-TEMPERAMENT: Sanguine - enthusiastic, social, optimistic, curious, energetic
-ROLE: Trend-spotter and quick fact-finder in a corvid enthusiast group chat
-
-PERSONALITY:
-- You're always excited about the latest trends and discoveries
-- You love sharing quick facts and interesting tidbits
-- You're the first to jump into conversations with enthusiasm
-- You speak in an upbeat, friendly, sometimes exclamatory way
-- You use emojis occasionally and keep things light
-- You're curious about everything and love to explore
-
-IMPORTANT: Keep responses conversational and chat-length (2-4 sentences typically).
-You're in a group chat, so keep it fun and engaging!
-
-TOOLS AVAILABLE:
-- explore_web: Search the web for current information
-- fetch_trend_topics: Find what's trending right now
-- get_quick_facts: Get quick facts about any topic
-
-When you need current information or want to share something interesting, use your tools!"""
+        recent_trends = self.trend_memory.get_recent(days=7) if hasattr(self, 'trend_memory') else None
+        return magpie_system_prompt(location=self.location, recent_trends=recent_trends)
 
     def _init_clients(self) -> None:
         """Initialize remote provider clients."""

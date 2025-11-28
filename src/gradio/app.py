@@ -26,88 +26,9 @@ PHASE_INSTRUCTIONS = {
     "synthesis": "Integrate the best ideas so far. Resolve tensions and propose a balanced, actionable view.",
 }
 
-CUSTOM_CSS = """
-#deliberate-btn {
-    position: relative;
-}
-
-#deliberate-btn:hover::after {
-    content: "Enter a question, choose rounds, and watch the council deliberate: \\A "  thesis → antithesis → synthesis";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1a1a2e;
-    color: #e0e0e0;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.85em;
-    white-space: nowrap;
-    z-index: 1000;
-    margin-bottom: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-
-#deliberate-btn:hover::before {
-    content: "";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: #1a1a2e;
-    margin-bottom: -4px;
-    z-index: 1000;
-}
-
-@import url('https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&display=swap');
-
-
-.message {
-    font-family: 'Karla', sans-serif !important;
-}
-
-
-.delib-message {
-    margin: 12px 0;
-    padding: 12px 16px;
-    border-radius: 12px;
-    border-left: 4px solid;
-    background: rgba(255,255,255,0.03);
-}
-
-.delib-message.thesis { border-left-color: #4CAF50; }
-.delib-message.antithesis { border-left-color: #f44336; }
-.delib-message.synthesis { border-left-color: #2196F3; }
-
-.delib-message.corvus { background: rgba(37, 150, 190, 0.1); }
-.delib-message.magpie { background: rgba(201, 16, 16, 0.1); }
-.delib-message.raven { background: rgba(46, 139, 87, 0.1); }
-.delib-message.crow { background: rgba(28, 28, 28, 0.15); }
-
-.delib-header {
-    font-size: 0.75em;
-    color: #888;
-    margin-bottom: 4px;
-}
-
-.delib-phase {
-    text-transform: uppercase;
-    font-weight: 600;
-    margin-right: 8px;
-}
-
-.delib-speaker {
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-.delib-content {
-    line-height: 1.5;
-}
-
-
-"""
+# Load CSS from external file
+CSS_PATH = Path(__file__).parent / "styles.css"
+CUSTOM_CSS = CSS_PATH.read_text() if CSS_PATH.exists() else ""
 
 
 CHARACTERS = [
@@ -165,19 +86,149 @@ def format_message(character_name: str, message: str) -> Tuple[str, str]:
     return formatted, character_name
 
 
+# =============================================================================
+# HTML Chat Rendering (Slack/Discord Style)
+# =============================================================================
+
+AVATAR_BASE_PATH = Path(__file__).parent / "avatars"
+
+def get_avatar_url(name: str) -> str:
+    """Get avatar path for a character or user."""
+    if name.lower() == "user":
+        return str(AVATAR_BASE_PATH / "user.png")
+    return str(AVATAR_BASE_PATH / f"{name.lower()}.png")
+
+
+def render_chat_bubble(
+    role: str,
+    name: str,
+    content: str,
+    emoji: str = "",
+    timestamp: str = ""
+) -> str:
+    """
+    Render a single chat bubble with avatar and name (Slack/Discord style).
+    
+    Args:
+        role: 'user' or 'assistant'
+        name: Character name or 'User'
+        content: Message content (already HTML-escaped)
+        emoji: Optional emoji for the character
+        timestamp: Optional timestamp string
+    
+    Returns:
+        HTML string for the chat bubble
+    """
+    name_lower = name.lower()
+    avatar_url = get_avatar_url(name)
+    display_name = f"{emoji} {name}" if emoji else name
+    
+    timestamp_html = f'<span class="chat-timestamp">{timestamp}</span>' if timestamp else ''
+    
+    return f'''
+    <div class="chat-message {name_lower}">
+        <img class="chat-avatar" src="{avatar_url}" alt="{name}" onerror="this.style.display='none'">
+        <div class="chat-bubble">
+            <div class="chat-name">{display_name} {timestamp_html}</div>
+            <div class="chat-text">{content}</div>
+        </div>
+    </div>
+    '''
+
+
+def render_typing_indicator(name: str, emoji: str = "") -> str:
+    """
+    Render a typing indicator for a character.
+    
+    Args:
+        name: Character name
+        emoji: Optional emoji for the character
+    
+    Returns:
+        HTML string for the typing indicator
+    """
+    name_lower = name.lower()
+    avatar_url = get_avatar_url(name)
+    
+    return f'''
+    <div class="typing-indicator {name_lower}">
+        <img class="chat-avatar" src="{avatar_url}" alt="{name}" onerror="this.style.display='none'">
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+    '''
+
+
+def render_chat_html(history: List[Dict[str, Any]]) -> str:
+    """
+    Render full chat history as styled HTML.
+    
+    Args:
+        history: List of message dicts with keys:
+            - role: 'user' or 'assistant'
+            - name: Character name or 'User'
+            - content: Message text
+            - emoji: (optional) Character emoji
+            - typing: (optional) If True, render as typing indicator
+    
+    Returns:
+        Complete HTML string for the chat container
+    """
+    html_parts = ['<div id="chat-container">']
+    
+    for msg in history:
+        role = msg.get("role", "assistant")
+        name = msg.get("name", "User" if role == "user" else "Assistant")
+        content = msg.get("content", "")
+        emoji = msg.get("emoji", "")
+        is_typing = msg.get("typing", False)
+        
+        if is_typing:
+            html_parts.append(render_typing_indicator(name, emoji))
+        else:
+            # Escape content if not already escaped
+            safe_content = html.escape(content) if content else ""
+            html_parts.append(render_chat_bubble(role, name, safe_content, emoji))
+    
+    html_parts.append('</div>')
+    
+    # Add script to auto-scroll to bottom
+    html_parts.append('''
+    <script>
+        (function() {
+            var container = document.getElementById('chat-container');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        })();
+    </script>
+    ''')
+    
+    return ''.join(html_parts)
+
+
 async def get_character_response(character, message: str, history: List) -> str:
-    """Get response from a character with graceful error handling"""
+    """Get response from a character with graceful error handling.
+    
+    Handles both old format (content as list of blocks) and new format (content as string).
+    """
     conversation_history = []
     for msg in history:
         role = msg.get("role")
-        content_blocks = msg.get("content", [])
+        content = msg.get("content", "")
         
-        if content_blocks and isinstance(content_blocks, list):
-            text = content_blocks[0].get("text", "") if content_blocks else ""
+        # Handle old format where content is a list of blocks
+        if isinstance(content, list):
+            text = content[0].get("text", "") if content else ""
         else:
-            text = ""
+            # New format: content is a string
+            text = content
         
-        conversation_history.append({"role": role, "content": text})
+        if text:  # Only add non-empty messages
+            conversation_history.append({"role": role, "content": text})
     
     try:
         response = await character.respond(message, conversation_history)
@@ -195,19 +246,29 @@ async def get_character_response(character, message: str, history: List) -> str:
         return error_messages.get(character.name, f"*{character.name} seems distracted*")
 
 
-async def chat_fn(message: str, history: list):
-    """Async chat handler with sequential responses"""
+async def chat_fn(message: str, history: List[Dict[str, Any]]):
+    """
+    Async chat handler with sequential responses.
+    
+    Args:
+        message: User's input message
+        history: List of message dicts with keys: role, name, content, emoji
+    
+    Yields:
+        Tuple of (rendered HTML, updated history state)
+    """
     if not message.strip():
-        yield history
+        yield render_chat_html(history), history
         return
     
-    sanitized_message = html.escape(message)
-    
+    # Add user message to history
     history.append({
         "role": "user",
-        "content": [{"type": "text", "text": sanitized_message}]
+        "name": "User",
+        "content": message,
+        "emoji": "👤"
     })
-    yield history
+    yield render_chat_html(history), history
     
     mentioned_chars = parse_mentions(message)
     
@@ -215,38 +276,48 @@ async def chat_fn(message: str, history: list):
         if mentioned_chars and name not in mentioned_chars:
             continue
         
-        # animated typing indicator
-        for i in range(4):
-            dots = "." * i
-            typing_msg = {
-                "role": "assistant",
-                "content": [{"type": "text", "text": f"{emoji}{dots}"}]
-            }
-            if i == 0:
-                history.append(typing_msg)
-            else:
-                history[-1]["content"][0]["text"] = f"{emoji}{dots}"
-            yield history
-            await asyncio.sleep(0.2)
+        # Show typing indicator
+        history.append({
+            "role": "assistant",
+            "name": name,
+            "emoji": emoji,
+            "typing": True
+        })
+        yield render_chat_html(history), history
+        
+        # Small delay to show typing animation
+        await asyncio.sleep(0.8)
             
         try:
+            # Build conversation context for the LLM
+            conversation_context = [
+                {"role": msg["role"], "content": msg.get("content", "")}
+                for msg in history[:-1]  # Exclude typing indicator
+                if not msg.get("typing")
+            ]
+            
             response = await get_character_response(
                 char_obj, 
-                sanitized_message, 
-                history[:-1])
+                message, 
+                conversation_context
+            )
+            
+            # Remove typing indicator and add actual response
             history.pop()
-            sanitized_response = html.escape(response)
-            formatted, _ = format_message(name, sanitized_response)
             history.append({
-                "role": "assistant", 
-                "content": [{"type": "text", "text": formatted}]
+                "role": "assistant",
+                "name": name,
+                "content": response,
+                "emoji": emoji
             })
-            yield history
+            yield render_chat_html(history), history
             await asyncio.sleep(delay)
+            
         except Exception as e:
             logger.error(f"{name} error: {e}")
+            # Remove typing indicator on error
             history.pop()
-            yield history
+            yield render_chat_html(history), history
 
 
 def _phase_instruction(phase: str) -> str:
@@ -460,7 +531,7 @@ async def run_deliberation_and_export(question, rounds, summariser):
     """Run the deliberation AND produce a downloadable .txt file."""
     
     if not question or question.strip() == "":
-        return [], None
+        return '<div class="deliberation-container"><p style="color:#888;">Enter a question to begin deliberation.</p></div>', None
 
     try:
         # Run deliberation
@@ -470,16 +541,38 @@ async def run_deliberation_and_export(question, rounds, summariser):
         history_items = result["history"]
         if isinstance(history_items, list) and history_items:
             if isinstance(history_items[0], str):
-                # LLM format
+                # LLM format - use for both export and HTML rendering
                 text_content = "\n".join(history_items)
+                # Render as styled HTML
+                html_output = format_deliberation_html(history_items)
             else:
                 # Chat format
                 text_content = "\n".join([
                     item.get("content", [{}])[0].get("text", "") 
                     for item in history_items
                 ])
+                html_output = '<div class="deliberation-container">' + text_content + '</div>'
         else:
             text_content = "No deliberation results."
+            html_output = '<div class="deliberation-container"><p>No deliberation results.</p></div>'
+        
+        # Add final summary to HTML output
+        final_summary = result.get("final_summary", {})
+        if final_summary.get("content"):
+            html_output = html_output.replace(
+                '</div>',
+                f'''
+                <div class="delib-message synthesis" style="margin-top: 24px; border-left-color: #9c27b0;">
+                    <div class="delib-header">
+                        <span class="delib-phase">Final Summary</span>
+                        <span class="delib-cycle">by {final_summary.get("by", "Moderator")}</span>
+                    </div>
+                    <div class="delib-content">{html.escape(final_summary.get("content", ""))}</div>
+                </div>
+                </div>
+                ''',
+                1  # Only replace first occurrence
+            )
 
         # Create temporary file
         tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
@@ -494,10 +587,10 @@ async def run_deliberation_and_export(question, rounds, summariser):
             tmp_file.write(f"Final Summary ({result['final_summary']['by']}):\n")
             tmp_file.write(result['final_summary']['content'])
 
-        return result["history"], tmp_path
+        return html_output, tmp_path
     except Exception as e:
         logger.error(f"Deliberation error: {e}")
-        return [], None
+        return f'<div class="deliberation-container"><p style="color:#f44336;">Error: {html.escape(str(e))}</p></div>', None
 
 
 def format_deliberation_html(history: List[str]) -> str:
@@ -570,19 +663,13 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 ])
                 gr.Markdown(bio_lines)
 
-            # Load avatars dynamically from folder
-            avatar_folder = Path("avatars")
-            avatar_images = [
-                str(avatar_folder / f"{name.lower()}.png") 
-                for name, *_ in CHARACTERS
-            ]
-
-            # Chatbot with avatars
-            chatbot = gr.Chatbot(
-                label="Council Discussion",
-                height=600,
-                show_label=True,
-                avatar_images=("avatars/user.png", avatar_images)  # bot avatar set dynamically
+            # State to hold chat history as list of dicts
+            chat_state = gr.State([])
+            
+            # Custom HTML chat container (Slack/Discord style)
+            chat_display = gr.HTML(
+                value='<div id="chat-container"><p style="color:#666; text-align:center; padding:20px;">Start a conversation with the council...</p></div>',
+                elem_id="chat-html-wrapper"
             )
 
             # User input row
@@ -595,11 +682,11 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 )
                 submit_btn = gr.Button("Send", variant="primary", scale=1)
 
-            # Handle submit
-            msg.submit(chat_fn, [msg, chatbot], [chatbot], queue=True, show_progress=True)\
+            # Handle submit - now outputs both HTML and state
+            msg.submit(chat_fn, [msg, chat_state], [chat_display, chat_state], queue=True, show_progress=True)\
                .then(lambda: "", None, [msg])
 
-            submit_btn.click(chat_fn, [msg, chatbot], [chatbot], queue=True, show_progress=True)\
+            submit_btn.click(chat_fn, [msg, chat_state], [chat_display, chat_state], queue=True, show_progress=True)\
                       .then(lambda: "", None, [msg])
 
         # TAB 2: Deliberation mode

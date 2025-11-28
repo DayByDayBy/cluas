@@ -346,7 +346,6 @@ dependencies = [
     { name = "cairosvg" },
     { name = "duckduckgo-search" },
     { name = "feedparser" },
-    { name = "google-search-results" },
     { name = "gradio", extra = ["mcp", "oauth"] },
     { name = "groq" },
     { name = "mcp" },
@@ -357,6 +356,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pytrends" },
     { name = "requests" },
+    { name = "serpapi" },
     { name = "tenacity" },
 ]
 
@@ -371,7 +371,6 @@ requires-dist = [
     { name = "cairosvg", specifier = ">=2.8.2" },
     { name = "duckduckgo-search", specifier = ">=8.1.1" },
     { name = "feedparser", specifier = ">=6.0.12" },
-    { name = "google-search-results", specifier = ">=2.4.2" },
     { name = "gradio", extras = ["mcp", "oauth"], specifier = "==6.0.1" },
     { name = "groq", specifier = ">=0.36.0" },
     { name = "mcp", specifier = ">=1.20.0" },
@@ -382,6 +381,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "pytrends", specifier = ">=4.9.2" },
     { name = "requests", specifier = ">=2.32.5" },
+    { name = "serpapi", git = "https://github.com/serpapi/SerpApi-python.git" },
     { name = "tenacity", specifier = ">=9.1.2" },
 ]
 
@@ -551,15 +551,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/24/7f/2747c0d332b9acfa7
 wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/02/a6b21098b1d5d6249b7c5ab69dde30108a71e4e819d4a9778f1de1d5b70d/fsspec-2025.10.0-py3-none-any.whl", hash = "sha256:7c7712353ae7d875407f97715f0e1ffcc21e33d5b24556cb1e090ae9409ec61d", size = 200966, upload-time = "2025-10-30T14:58:42.53Z" },
 ]
-
-[[package]]
-name = "google-search-results"
-version = "2.4.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/30/b3a6f6a2e00f8153549c2fa345c58ae1ce8e5f3153c2fe0484d444c3abcb/google_search_results-2.4.2.tar.gz", hash = "sha256:603a30ecae2af8e600b22635757a6df275dad4b934f975e67878ccd640b78245", size = 18818, upload-time = "2023-03-10T11:13:09.953Z" }
 
 [[package]]
 name = "gradio"
@@ -1806,6 +1797,14 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7d/31/f2289ce78b9b473d582568c234e104d2a342fd658cc288a7553d83bb8595/semantic_version-2.10.0.tar.gz", hash = "sha256:bdabb6d336998cbb378d4b9db3a4b56a1e3235701dc05ea2690d9a997ed5041c", size = 52289, upload-time = "2022-05-26T13:35:23.454Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/23/8146aad7d88f4fcb3a6218f41a60f6c2d4e3a72de72da1825dc7c8f7877c/semantic_version-2.10.0-py2.py3-none-any.whl", hash = "sha256:de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177", size = 15552, upload-time = "2022-05-26T13:35:21.206Z" },
+]
+
+[[package]]
+name = "serpapi"
+version = "0.1.5"
+source = { git = "https://github.com/serpapi/SerpApi-python.git#aadba86565ad7ad50381723661dd2b293e158356" }
+dependencies = [
+    { name = "requests" },
 ]
 
 [[package]]

@@ -198,7 +198,8 @@ async def chat_fn(message: str, history: list):
             formatted, _ = format_message(name, sanitized_response)
             history.append({
                 "role": "assistant", 
-                "content": [{"type": "text", "text": formatted}]})
+                "content": [{"type": "text", "text": formatted}]
+            })
             yield history
             await asyncio.sleep(delay)
         except Exception as e:
@@ -334,7 +335,10 @@ async def deliberate(
             conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
             display_text = html.escape(text)
             formatted, _ = format_message(name, display_text)
-            chat_entry = {"role": "assistant", "content": [{"type": "text", "text": formatted}]}
+            chat_entry = {
+                "role": "assistant",
+                "content": [{"type": "text", "text": formatted}]
+            }
             chat_history.append(chat_entry)
 
             entry = {
@@ -468,7 +472,7 @@ theme = gr.themes.Soft(
 )
 
 # Create Gradio interface
-with gr.Blocks(title="Cluas Huginn", theme=theme, css=CUSTOM_CSS) as demo:
+with gr.Blocks(title="Cluas Huginn") as demo:
 
     # Branding / tagline
     gr.Markdown("""
@@ -506,8 +510,7 @@ with gr.Blocks(title="Cluas Huginn", theme=theme, css=CUSTOM_CSS) as demo:
                 label="Council Discussion",
                 height=600,
                 show_label=True,
-                avatar_images=tuple(avatar_images),
-                user_avatar="avatars/user.png"
+                avatar_images=("avatars/user.png", avatar_images)  # bot avatar set dynamically
             )
 
             # User input row
@@ -615,4 +618,4 @@ if __name__ == "__main__":
         sys.exit(0)
     
     demo.queue()
-    demo.launch(theme=theme)
+    demo.launch(theme=theme, css=CUSTOM_CSS)

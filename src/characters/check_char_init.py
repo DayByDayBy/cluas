@@ -35,8 +35,8 @@ cloud_config = {
     "primary": "groq",
     "fallback": ["nebius"],
     "models": {
-        "groq": "llama-3.3-70b-versatile",
-        "nebius": "meta-llama/Llama-3.3-70B-Instruct-fast"
+        "groq": "qwen/qwen3-32b",
+        "nebius": "Qwen3-30B-A3B-Instruct-2507"
     },
     "timeout": 30,
     "use_cloud": True

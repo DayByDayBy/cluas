@@ -66,6 +66,47 @@ CUSTOM_CSS = """
 .message {
     font-family: 'Karla', sans-serif !important;
 }
+
+
+.delib-message {
+    margin: 12px 0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border-left: 4px solid;
+    background: rgba(255,255,255,0.03);
+}
+
+.delib-message.thesis { border-left-color: #4CAF50; }
+.delib-message.antithesis { border-left-color: #f44336; }
+.delib-message.synthesis { border-left-color: #2196F3; }
+
+.delib-message.corvus { background: rgba(37, 150, 190, 0.1); }
+.delib-message.magpie { background: rgba(201, 16, 16, 0.1); }
+.delib-message.raven { background: rgba(46, 139, 87, 0.1); }
+.delib-message.crow { background: rgba(28, 28, 28, 0.15); }
+
+.delib-header {
+    font-size: 0.75em;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.delib-phase {
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.delib-speaker {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.delib-content {
+    line-height: 1.5;
+}
+
+
 """
 
 
@@ -459,6 +500,37 @@ async def run_deliberation_and_export(question, rounds, summariser):
         return [], None
 
 
+def format_deliberation_html(history: List[str]) -> str:
+    """Convert deliberation history to styled HTML."""
+    html_parts = ['<div class="deliberation-container">']
+    
+    for entry in history:
+        # Parse [PHASE | Cycle N] Name: content
+        match = re.match(r'\[(\w+)\s*\|\s*Cycle\s*(\d+)\]\s*(\w+):\s*(.*)', entry)
+        if match:
+            phase, cycle, name, content = match.groups()
+            emoji = CHARACTER_EMOJIS.get(name, "💬")
+            phase_class = phase.lower()
+            html_parts.append(f'''
+                <div class="delib-message {phase_class} {name.lower()}">
+                    <div class="delib-header">
+                        <span class="delib-phase">{phase}</span>
+                        <span class="delib-cycle">Cycle {cycle}</span>
+                    </div>
+                    <div class="delib-speaker">{emoji} {name}</div>
+                    <div class="delib-content">{html.escape(content)}</div>
+                </div>
+            ''')
+    
+    html_parts.append('</div>')
+    return ''.join(html_parts)
+
+
+
+
+
+
+
 # Theme configuration
 theme = gr.themes.Soft(
     primary_hue=gr.themes.colors.indigo,
@@ -563,13 +635,12 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 )
 
             deliberate_btn = gr.Button("🎯 Deliberate", variant="primary", scale=1, elem_id="deliberate-btn")
-            deliberation_output = gr.Textbox(label="Deliberation Output", lines=15)
+            deliberation_output = gr.HTML(label="Deliberation Output")
 
-            download_btn = gr.File(
-                label="📥 Download Chat",
-                file_types=[".txt"],
-                interactive=False,
-            )
+            download_btn = gr.DownloadButton(
+                label="📥 Download Transcript",
+                variant="secondary",
+)
 
             # Wire up deliberation
             deliberate_btn.click(

@@ -26,88 +26,10 @@ PHASE_INSTRUCTIONS = {
     "synthesis": "Integrate the best ideas so far. Resolve tensions and propose a balanced, actionable view.",
 }
 
-CUSTOM_CSS = """
-#deliberate-btn {
-    position: relative;
-}
+# loading in CSS from external file
 
-#deliberate-btn:hover::after {
-    content: "Enter a question, choose rounds, and watch the council deliberate: \\A "  thesis → antithesis → synthesis";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1a1a2e;
-    color: #e0e0e0;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.85em;
-    white-space: nowrap;
-    z-index: 1000;
-    margin-bottom: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-
-#deliberate-btn:hover::before {
-    content: "";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: #1a1a2e;
-    margin-bottom: -4px;
-    z-index: 1000;
-}
-
-@import url('https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&display=swap');
-
-
-.message {
-    font-family: 'Karla', sans-serif !important;
-}
-
-
-.delib-message {
-    margin: 12px 0;
-    padding: 12px 16px;
-    border-radius: 12px;
-    border-left: 4px solid;
-    background: rgba(255,255,255,0.03);
-}
-
-.delib-message.thesis { border-left-color: #4CAF50; }
-.delib-message.antithesis { border-left-color: #f44336; }
-.delib-message.synthesis { border-left-color: #2196F3; }
-
-.delib-message.corvus { background: rgba(37, 150, 190, 0.1); }
-.delib-message.magpie { background: rgba(201, 16, 16, 0.1); }
-.delib-message.raven { background: rgba(46, 139, 87, 0.1); }
-.delib-message.crow { background: rgba(28, 28, 28, 0.15); }
-
-.delib-header {
-    font-size: 0.75em;
-    color: #888;
-    margin-bottom: 4px;
-}
-
-.delib-phase {
-    text-transform: uppercase;
-    font-weight: 600;
-    margin-right: 8px;
-}
-
-.delib-speaker {
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-.delib-content {
-    line-height: 1.5;
-}
-
-
-"""
+CSS_PATH = Path(__file__).parent / "styles.css"
+CUSTOM_CSS = CSS_PATH.read_text() if CSS_PATH.exists() else ""
 
 
 CHARACTERS = [
@@ -138,6 +60,42 @@ CHARACTER_PERSONAS: Dict[str, Dict[str, str]] = {
 }
 
 CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _, _ in CHARACTERS}
+
+
+# bubbles
+def render_chat_bubble(role: str, name: str, content: str, avatar_url: str, character: str = "") -> str:
+    """
+    Render a single chat message bubble.
+    `character` is used for per-character CSS accents.
+    """
+    return f"""
+    <div class="chat-message {role} {character}">
+        <img class="chat-avatar" src="{avatar_url}" alt="{name}"/>
+        <div class="chat-content">
+            <div class="chat-name">{name}</div>
+            <div class="chat-bubble">{content}</div>
+        </div>
+    </div>
+    """
+
+def render_chat_html(history):
+    """
+    Render the entire chat thread into a single HTML string.
+    History is a list of dicts: {role, name, content, avatar_url, character}
+    """
+    html = '<div id="chat-container">'
+    for msg in history:
+        html += render_chat_bubble(
+            msg["role"],
+            msg.get("name", "Unknown"),
+            msg["content"],
+            msg.get("avatar_url", ""),
+            msg.get("character", "")
+        )
+    html += "</div>"
+    return html
+
+
 
 
 def parse_mentions(message: str) -> List[str] | None:

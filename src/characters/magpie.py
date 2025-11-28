@@ -19,6 +19,9 @@ from src.prompts.character_prompts import magpie_system_prompt
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
+
+
 class Magpie:
     def __init__(self, provider_config: Optional[Dict] = None, location: str = "Brooklyn, NY"):
         self.name = "Magpie"

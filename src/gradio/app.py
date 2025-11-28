@@ -1,4 +1,5 @@
 import gradio as gr
+import os
 import logging
 import asyncio
 import html
@@ -11,136 +12,92 @@ from src.characters.corvus import Corvus
 from src.characters.magpie import Magpie
 from src.characters.raven import Raven
 from src.characters.crow import Crow
+from src.characters.base_character import Character
+from src.characters.registry import register_instance, get_all_characters, REGISTRY
 
 logger = logging.getLogger(__name__)
 
-# init all characters
-corvus = Corvus(location="Glasgow, Scotland")
-magpie = Magpie(location="Brooklyn, NY")
-raven = Raven(location="Seattle, WA")
-crow = Crow(location="Tokyo, Japan")
+# instantiate characters (as you already do)
+corvus = Corvus()
+magpie = Magpie()
+raven = Raven()
+crow = Crow()
 
+# register them
+register_instance(corvus)
+register_instance(magpie)
+register_instance(raven)
+register_instance(crow)
+
+# then use
+CHARACTERS = get_all_characters()  # List[Character]
+
+
+#  debate phases:
 PHASE_INSTRUCTIONS = {
     "thesis": "Present your initial perspective. Offer concrete signals, data, or references that support your stance.",
     "antithesis": "Critique or challenge earlier answers. Highlight blind spots, weak evidence, or alternative interpretations.",
     "synthesis": "Integrate the best ideas so far. Resolve tensions and propose a balanced, actionable view.",
 }
 
-# loading in CSS from external file
-
+# load CSS:
 CSS_PATH = Path(__file__).parent / "styles.css"
 CUSTOM_CSS = CSS_PATH.read_text() if CSS_PATH.exists() else ""
 
-
-CHARACTERS = [
-    # (name, emoji, instance, delay, location)
-    ("Corvus", "🐦‍⬛", corvus, 1.5, "Glasgow, Scotland"),
-    ("Magpie", "🪶", magpie, 1.2, "Brooklyn, NY"),
-    ("Raven", "🦅", raven, 1.0, "Seattle, WA"),
-    ("Crow", "🕊️", crow, 1.0, "Tokyo, Japan")
-]
-
-CHARACTER_PERSONAS: Dict[str, Dict[str, str]] = {
-    "Corvus": {
-        "role": "Melancholic scholar focused on academic rigor",
-        "tone": "Precise, evidence-driven, cites papers when relevant.",
-    },
-    "Magpie": {
-        "role": "Sanguine trendspotter tracking cultural signals",
-        "tone": "Upbeat, curious, highlights emerging stories and trivia.",
-    },
-    "Raven": {
-        "role": "Choleric activist monitoring news and accountability",
-        "tone": "Direct, justice-oriented, challenges misinformation.",
-    },
-    "Crow": {
-        "role": "Phlegmatic observer studying patterns in nature",
-        "tone": "Calm, methodical, references environmental signals.",
-    },
-}
-
-CHARACTER_EMOJIS = {name: emoji for name, emoji, _, _, _ in CHARACTERS}
-
-
-# bubbles
-def render_chat_bubble(role: str, name: str, content: str, avatar_url: str, character: str = "") -> str:
-    """
-    Render a single chat message bubble.
-    `character` is used for per-character CSS accents.
-    """
-    return f"""
-    <div class="chat-message {role} {character}">
-        <img class="chat-avatar" src="{avatar_url}" alt="{name}"/>
-        <div class="chat-content">
-            <div class="chat-name">{name}</div>
-            <div class="chat-bubble">{content}</div>
-        </div>
-    </div>
-    """
-
 def render_chat_html(history: list) -> str:
     html_parts = []
+    
     for msg in history:
-        role = msg["role"]
-        content = msg["content"][0]["text"] if msg["content"] else ""
-        if role == "user":
+        if msg.speaker == "user":
             html_parts.append(f'''
-                <div class="chat-message user">
-                    <div class="chat-avatar"><img src="avatars/user.png"></div>
-                    <div class="chat-content">
-                        <div class="chat-bubble">{content}</div>
+                    <div class="chat-message user">
+                        <div class="chat-avatar"><img src="avatars/user.png"></div>
+                        <div class="chat-content">
+                            <div class="chat-bubble">{html.escape(msg.content)}</div>
+                        </div>
                     </div>
-                </div>
-            ''')
+                ''')
         else:
-            # Extract character name from formatted text (emoji + <span>name</span>)
-            m = re.match(r"(.*)<span.*?>(.*?)</span>: (.*)", content)
-            if m:
-                emoji, name, text = m.groups()
-            else:
-                emoji, name, text = "", "Assistant", content
-            
             html_parts.append(f'''
-                <div class="chat-message {name.lower()}">
-                    <div class="chat-avatar"><img src="avatars/{name.lower()}.png"></div>
-                    <div class="chat-content">
-                        <div class="chat-name">{name}</div>
-                        <div class="chat-bubble">{text}</div>
+                    <div class="chat-message {msg.speaker.lower()}">
+                        <div class="chat-avatar"><img src="avatars/{msg.speaker.lower()}.png"></div>
+                        <div class="chat-content">
+                            <div class="chat-name">{msg.emoji} {msg.speaker}</div>
+                            <div class="chat-bubble">{html.escape(msg.content)}</div>
+                        </div>
                     </div>
-                </div>
-            ''')
+                ''')    
     return "\n".join(html_parts)
 
 
 
-
-
-def parse_mentions(message: str) -> List[str] | None:
+def parse_mentions(message: str) -> list[str] | None:
     """Extract @CharacterName mentions. Returns None if no mentions (all respond)."""
-    pattern = r'@(Corvus|Magpie|Raven|Crow)'
-    mentions = re.findall(pattern, message, re.IGNORECASE)
-    return [m.capitalize() for m in mentions] if mentions else None
+    lookup = set(REGISTRY.keys())
+    
+    mentions = []
+    for word in message.split():
+        if not word.startswith("@"):
+            continue
+        name = word[1:].rstrip(".,!?;:").lower()
+        if name in lookup:
+            mentions.append(REGISTRY[name].name)
+    return mentions or None
 
 
-def format_message(character_name: str, message: str) -> Tuple[str, str]:
+
+
+def format_message(character: Character, message: str) -> Tuple[str, str]:
     """Format message with character name and emoji"""
-    emoji = CHARACTER_EMOJIS.get(character_name, "💬")
+    emoji = getattr(character, "emoji", "💬")
+    color = getattr(character, "color", "#FFFFFF")
+    name = getattr(character, "name", "counsel") 
     
-    COLORS = {
-        "Corvus": "#2596be",  # blue
-        "Magpie": "#c91010",  # red
-        "Raven": "#2E8B57",   # green
-        "Crow": "#1C1C1C",    # dark gray
-        "User": "#FFD700",    # gold/yellow
-    }
+    formatted = f'{emoji} <span style="color:{color}; font-weight:bold;">{name}</span>: {message}'
     
-    color = COLORS.get(character_name, "#FFFFFF")
-    formatted = f'{emoji} <span style="color:{color}; font-weight:bold;">{character_name}</span>: {message}'
-    
-    return formatted, character_name
+    return formatted, name
 
-
-async def get_character_response(character, message: str, history: List) -> str:
+async def get_character_response(character: Character, message: str, history: List) -> str:
     """Get response from a character with graceful error handling"""
     conversation_history = []
     for msg in history:
@@ -151,7 +108,8 @@ async def get_character_response(character, message: str, history: List) -> str:
             text = content_blocks[0].get("text", "") if content_blocks else ""
         else:
             text = ""
-        
+            
+            
         conversation_history.append({"role": role, "content": text})
     
     try:
@@ -160,11 +118,11 @@ async def get_character_response(character, message: str, history: List) -> str:
     except Exception as e:
         logger.error(f"{character.name} error: {str(e)}")
         
-        # Character-specific error messages
+        # caracter-specific error messages
         error_messages = {
             "Corvus": "*pauses mid-thought, adjusting spectacles* Hmm, I seem to have lost my train of thought...",
             "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
-            "Raven": "*scowls* The systems are down. Typical.",
+            "Raven": "Internet being slow again. Typical.",
             "Crow": "*silent, gazing into the distance*"
         }
         return error_messages.get(character.name, f"*{character.name} seems distracted*")
@@ -176,50 +134,47 @@ async def chat_fn(message: str, history: list):
         yield history
         return
     
-    # Don't escape here — renderer will handle it
-    user_message = message
-    
     history.append({
         "role": "user",
-        "content": [{"type": "text", "text": user_message}]
+        "content": [{"type": "text", "text": message}]
     })
     yield history
     
     mentioned_chars = parse_mentions(message)
     
-    for name, emoji, char_obj, delay, location in CHARACTERS:
-        if mentioned_chars and name not in mentioned_chars:
+    for char in CHARACTERS:
+        if mentioned_chars and char.name not in mentioned_chars:
             continue
         
-        # Animated typing indicator
+        # typing indicator
         for i in range(4):
             dots = "." * i
             typing_msg = {
                 "role": "assistant",
-                "content": [{"type": "text", "text": f"{emoji}{dots}"}]
+                "content": [{"type": "text", "text": f"{char.emoji}{dots}"}]
             }
             if i == 0:
                 history.append(typing_msg)
             else:
-                history[-1]["content"][0]["text"] = f"{emoji}{dots}"
+                history[-1]["content"][0]["text"] = f"{char.emoji}{dots}"
             yield history
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.25)
         
         try:
-            response = await get_character_response(char_obj, user_message, history[:-1])
+            response = await get_character_response(char, message, history[:-1])
             
-            history.pop()  # remove typing indicator
+            history.pop()  # removes typing indicator
             
-            formatted, _ = format_message(name, response)  # don't escape, HTML renderer will
+            formatted, _ = format_message(char, response)
             history.append({
                 "role": "assistant",
                 "content": [{"type": "text", "text": formatted}]
             })
             yield history
-            await asyncio.sleep(delay)
+            await asyncio.sleep(getattr(char, "delay", 1.0))
         
         except Exception as e:
-            logger.error(f"{name} error: {e}")
+            logger.error(f"{char.name} error: {e}")
             history.pop()
             yield history
 
@@ -229,51 +184,67 @@ def _phase_instruction(phase: str) -> str:
 def _build_phase_prompt(
     *,
     phase: str,
-    character_name: str,
-    location: str,
+    char: Character,
     question: str,
     history_snippet: str,
 ) -> str:
-    persona = CHARACTER_PERSONAS.get(character_name, {})
-    role = persona.get("role", "council member")
-    tone = persona.get("tone", "")
+    
+    role = char.role
+    tone = char.tone
+    location = char.location
     phase_text = _phase_instruction(phase)
     history_block = history_snippet or "No prior discussion yet."
 
     return (
-        f"You are {character_name}, {role} based in {location}. {tone}\n"
+        f"You are {char.name}, {role} based in {location}. {tone}\n"
         f"PHASE: {phase.upper()}.\n"
         f"INSTRUCTION: {phase_text}\n\n"
         f"QUESTION / CONTEXT:\n{question}\n\n"
         f"RECENT COUNCIL NOTES:\n{history_block}\n\n"
-        "Respond as a short chat message (2-4 sentences)."
+        "Respond as a chat message (2-4 sentences is enough)."
     )
 
 
-def _history_text(history: List[str], limit: int = 12) -> str:
+def _history_text(history: List[str], limit: int = 13) -> str:
     if not history:
         return ""
     return "\n".join(history[-limit:])
 
 
-async def _neutral_summary(history_text: str) -> str:
+async def _neutral_summary(history_text: str, moderator: Character = None) -> str:
     if not history_text.strip():
-        return "No discussion available to summarize."
+        return "No discussion to summarize."
     prompt = (
-        "You are the neutral moderator of the Corvid Council. "
+        "You are the neutral moderator. "
         "Summarize the key points, agreements, and disagreements succinctly.\n\n"
         f"TRANSCRIPT:\n{history_text}"
     )
-    return await get_character_response(corvus, prompt, [])
+    return await get_character_response(moderator, prompt, [])
 
 
-async def _summarize_cycle(history_text: str) -> str:
+async def _summarize_cycle(history_text: str, moderator: Character = None) -> str:
     prompt = (
         "Provide a concise recap (3 sentences max) capturing the thesis, antithesis, "
         "and synthesis highlights from the transcript below.\n\n"
         f"{history_text}"
     )
-    return await get_character_response(corvus, prompt, [])
+    return await get_character_response(moderator, prompt, [])
+
+#  messaage format translators:
+
+def to_llm_history(history: list[BaseMessage]) -> list[dict]:
+    return [{"role": m.role, "content": m.content} for m in history]
+
+def to_html(message: UIMessage) -> str:
+    return f"""
+    <div class="chat-message {message.speaker}">
+        <div class="chat-avatar">{message.emoji}</div>
+        <div class="chat-content">
+            <div class="chat-bubble">{html.escape(message.content)}</div>
+        </div>
+    </div>
+    """
+
 
 
 async def deliberate(
@@ -303,14 +274,14 @@ async def deliberate(
         raise ValueError("Question is required for deliberation.")
 
     rounds = max(1, min(rounds, 3))
-    rng = random.Random(seed)
+    
     if seed is None:
-        seed = rng.randint(0, 1_000_000)
-        rng.seed(seed)
+        seed = random.randint(0, 1_000_000)
+    rng = random.Random(seed)
 
     char_order = CHARACTERS.copy()
     rng.shuffle(char_order)
-    order_names = [name for name, *_ in char_order]
+    order_names = [char.name for char in char_order]
 
     conversation_llm: List[str] = []
     chat_history: List[Dict[str, Any]] = []
@@ -326,21 +297,22 @@ async def deliberate(
         history_excerpt = _history_text(conversation_llm)
         prompts = []
         tasks = []
-        for name, _, character, _, location in char_order:
+        
+        for char in char_order:
+            
             prompt = _build_phase_prompt(
                 phase=phase,
-                character_name=name,
-                location=location,
+                char=char,
                 question=base_context,
                 history_snippet=history_excerpt,
             )
-            prompts.append((name, prompt))
-            tasks.append(get_character_response(character, prompt, []))
+            prompts.append((char.name, prompt))
+            tasks.append(get_character_response(char, prompt, []))
 
         responses = await asyncio.gather(*tasks, return_exceptions=True)
         entries: List[Dict[str, Any]] = []
 
-        for (name, prompt), response in zip(prompts, responses):
+        for (name, prompt), response, char_obj in zip(prompts, responses, char_order):
             if isinstance(response, Exception):
                 logger.error("Phase %s: %s failed (%s)", phase, name, response)
                 text = f"*{name} could not respond.*"
@@ -349,20 +321,22 @@ async def deliberate(
 
             conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
             display_text = html.escape(text)
-            formatted, _ = format_message(name, display_text)
+            formatted, _ = format_message(char_obj, display_text)
             chat_entry = {
                 "role": "assistant",
                 "content": [{"type": "text", "text": formatted}]
             }
             chat_history.append(chat_entry)
-
+            
             entry = {
                 "cycle": cycle_idx + 1,
                 "phase": phase,
-                "name": name,
+                "name": char.name,
                 "content": text,
+                "char": char, 
                 "prompt": prompt,
             }
+            
             phase_records[phase].append(entry)
             flattened_records.append(entry)
             entries.append(entry)
@@ -391,7 +365,7 @@ async def deliberate(
         final_summary = await _neutral_summary(full_history_text)
         summary_author = "Moderator"
     else:
-        name_map = {name.lower(): char for name, _, char, _, _ in CHARACTERS}
+        name_map = {char.name.lower(): char for char in CHARACTERS}
         selected = name_map.get(summariser_normalized)
         if not selected:
             raise ValueError(f"Unknown summariser '{summariser}'. Choose moderator or one of: {', '.join(order_names)}.")
@@ -442,11 +416,12 @@ async def run_deliberation_and_export(question, rounds, summariser):
             question, 
             rounds=rounds, 
             summariser=summariser,
-            format="llm"  # to ensure it actually gets text format
+            format="llm",  # to ensure it actually gets text format
+            structure="flat"
         )
         
        # format html for display
-        display_html = format_deliberation_html(result["history"])
+        display_html = format_deliberation_html(result["phases"])
         display_html += f'''
             <div class="delib-summary">
                 <h3>Final Summary ({result['final_summary']['by']})</h3>
@@ -455,17 +430,33 @@ async def run_deliberation_and_export(question, rounds, summariser):
         '''
         
         text_content = "\n\n".join(result["history"])
+        
+        
+        # the code below could be it's own function, 
+        # but it's not reused atm, so that seems wasteful.
+        # worth keeping in mind for future use, tho.
+        
         tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
-        with open(tmp_fd, "w", encoding="utf-8") as tmp_file:
-            tmp_file.write(f"Question: {question}\n")
-            tmp_file.write(f"Rounds: {rounds}\n")
-            tmp_file.write(f"Summariser: {summariser}\n")
-            tmp_file.write(f"Character Order: {', '.join(result['character_order'])}\n")
-            tmp_file.write("=" * 80 + "\n\n")
+        os.close(tmp_fd)
+        
+        header = (
+                f"Question: {question}\n"
+                f"Rounds: {rounds}\n"
+                f"Summariser: {summariser}\n"
+                f"Character Order: {', '.join(result['character_order'])}\n"
+                + "=" * 80 + "\n\n"
+            )
+
+        footer = (
+                "\n\n" + "=" * 80 + "\n"
+                f"Final Summary ({result['final_summary']['by']}):\n"
+                f"{result['final_summary']['content']}"
+            )
+    
+        with open(tmp_path, "w", encoding="utf-8") as tmp_file:
+            tmp_file.write(header)
             tmp_file.write(text_content)
-            tmp_file.write("\n\n" + "=" * 80 + "\n")
-            tmp_file.write(f"Final Summary ({result['final_summary']['by']}):\n")
-            tmp_file.write(result['final_summary']['content'])
+            tmp_file.write(footer)
             
         return display_html, tmp_path
         
@@ -474,21 +465,32 @@ async def run_deliberation_and_export(question, rounds, summariser):
         return f"<p style='color: red;'>Error: {str(e)}</p>", None
 
 
-def format_deliberation_html(history: List[str]) -> str:
-    """Convert deliberation history to styled HTML."""
+def format_deliberation_html(entries: list | dict) -> str:
+    
+    """
+        Convert flat list or nested dict of phase entries to styled HTML.
+            - If dict: keys are phase names, values are lists of entries.
+            - If list: expects structured entries with 'phase', 'cycle', 'name', 'content', 'char'.
+    """    
+    
+    if isinstance(entries, dict):
+        entries = [e for phase_list in entries.values() for e in phase_list]
+    
     html_parts = ['<div class="deliberation-container">']
     
-    for entry in history:
-        # Parse [PHASE | Cycle N] Name: content
-        match = re.match(r'\[(\w+)\s*\|\s*Cycle\s*(\d+)\]\s*(\w+):\s*(.*)', entry)
-        if match:
-            phase, cycle, name, content = match.groups()
-            emoji = CHARACTER_EMOJIS.get(name, "💬")
-            phase_class = phase.lower()
-            html_parts.append(f'''
-                <div class="delib-message {phase_class} {name.lower()}">
+    for entry in entries:
+        phase = entry.get("phase", "unknown").lower()
+        cycle = entry.get("cycle", 0)
+        name = entry.get("name", "unknown")
+        content = entry.get("content", "")
+        char = entry.get("char")
+        emoji = getattr(char, "emoji", "💬") if char else "💬"
+        
+        
+        html_parts.append(f'''
+                <div class="delib-message {phase} {name.lower()}">
                     <div class="delib-header">
-                        <span class="delib-phase">{phase}</span>
+                        <span class="delib-phase">{phase.capitalize()}</span>
                         <span class="delib-cycle">Cycle {cycle}</span>
                     </div>
                     <div class="delib-speaker">{emoji} {name}</div>
@@ -498,12 +500,6 @@ def format_deliberation_html(history: List[str]) -> str:
     
     html_parts.append('</div>')
     return ''.join(html_parts)
-
-
-
-
-
-
 
 # Theme configuration
 theme = gr.themes.Soft(
@@ -539,20 +535,21 @@ with gr.Blocks(title="Cluas Huginn") as demo:
             # Optional accordion for full character bios
             with gr.Accordion("Character Bios", open=False):
                 bio_lines = "\n".join([
-                    f"- **{name}** {emoji}: {location}" 
-                    for name, emoji, _, _, location in CHARACTERS
+                    f"- **{char.name}** {char.emoji}: {char.location}" 
+                    for char in CHARACTERS
                 ])
                 gr.Markdown(bio_lines)
 
             # Load avatars dynamically from folder
             avatar_folder = Path("avatars")
+            
             avatar_images = [
-                str(avatar_folder / f"{name.lower()}.png") 
-                for name, *_ in CHARACTERS
+                str(avatar_folder / f"{char.name.lower()}.png") 
+                for char in CHARACTERS
             ]
 
             # Chatbot with avatars
-            chat_html = gr.HTML(elem_id="chat-container")
+            chat_html = gr.HTML(elem_id="chat-container", interactive=True)
             chat_state = gr.State([])
 
             # User input row

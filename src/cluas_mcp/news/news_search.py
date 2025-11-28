@@ -1,7 +1,7 @@
 import os
 import logging
 import serpapi
-from newsapi import NewsApiClient
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,49 @@ def verify_news(query: str, max_results: int = 5) -> dict:
                 return result
         except Exception as e:
             logger.warning(f"SerpAPI Bing failed: {e}, falling back to mock")
+
+def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
+    """Search news using NewsAPI via direct HTTP request."""
+    api_key = os.getenv("NEWS_API_KEY")
+    if not api_key:
+        raise ValueError("NEWS_API_KEY not found")
+    
+    try:
+        response = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={
+                "q": query,
+                "language": "en",
+                "sortBy": "publishedAt",
+                "pageSize": max_results,
+                "apiKey": api_key
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        articles = []
+        for item in data.get('articles', [])[:max_results]:
+            articles.append({
+                "title": item.get('title', 'No title'),
+                "url": item.get('url', ''),
+                "summary": item.get('description') or item.get('content', '')[:200] if item.get('content') else '',
+                "source": item.get('source', {}).get('name', 'Unknown'),
+                "published_date": item.get('publishedAt', '')[:10],
+                "author": item.get('author') or 'Unknown'
+            })
+        
+        return {
+            "articles": articles,
+            "query": query,
+            "total_results": len(articles),
+            "source": "newsapi"
+        }
+    except Exception as e:
+        logger.error(f"NewsAPI error: {e}")
+        raise
+
 
     # Fall back to mock
     logger.warning("Using mock data")

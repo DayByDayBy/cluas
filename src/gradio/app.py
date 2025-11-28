@@ -549,12 +549,14 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 submit_btn = gr.Button("Send", variant="primary", scale=1)
 
             # Handle submit
-            msg.submit(chat_fn, [msg, chatbot], [chatbot], queue=True, show_progress=True)\
-               .then(lambda: "", None, [msg])
+            msg.submit(chat_fn, [msg, chat_state], [chat_state], queue=True)\
+                .then(render_chat_html, [chat_state], [chat_html])\
+                .then(lambda: "", None, [msg])
 
-            submit_btn.click(chat_fn, [msg, chatbot], [chatbot], queue=True, show_progress=True)\
-                      .then(lambda: "", None, [msg])
-
+            submit_btn.click(chat_fn, [msg, chat_state], [chat_state], queue=True)\
+                .then(render_chat_html, [chat_state], [chat_html])\
+                .then(lambda: "", None, [msg])
+                
         # TAB 2: Deliberation mode
         with gr.Tab("Deliberation"):
             gr.Markdown("""

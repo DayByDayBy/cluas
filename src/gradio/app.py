@@ -78,22 +78,39 @@ def render_chat_bubble(role: str, name: str, content: str, avatar_url: str, char
     </div>
     """
 
-def render_chat_html(history):
-    """
-    Render the entire chat thread into a single HTML string.
-    History is a list of dicts: {role, name, content, avatar_url, character}
-    """
-    html = '<div id="chat-container">'
+def render_chat_html(history: list) -> str:
+    html_parts = []
     for msg in history:
-        html += render_chat_bubble(
-            msg["role"],
-            msg.get("name", "Unknown"),
-            msg["content"],
-            msg.get("avatar_url", ""),
-            msg.get("character", "")
-        )
-    html += "</div>"
-    return html
+        role = msg["role"]
+        content = msg["content"][0]["text"] if msg["content"] else ""
+        if role == "user":
+            html_parts.append(f'''
+                <div class="chat-message user">
+                    <div class="chat-avatar"><img src="avatars/user.png"></div>
+                    <div class="chat-content">
+                        <div class="chat-bubble">{content}</div>
+                    </div>
+                </div>
+            ''')
+        else:
+            # Extract character name from formatted text (emoji + <span>name</span>)
+            m = re.match(r"(.*)<span.*?>(.*?)</span>: (.*)", content)
+            if m:
+                emoji, name, text = m.groups()
+            else:
+                emoji, name, text = "", "Assistant", content
+            
+            html_parts.append(f'''
+                <div class="chat-message {name.lower()}">
+                    <div class="chat-avatar"><img src="avatars/{name.lower()}.png"></div>
+                    <div class="chat-content">
+                        <div class="chat-name">{name}</div>
+                        <div class="chat-bubble">{text}</div>
+                    </div>
+                </div>
+            ''')
+    return "\n".join(html_parts)
+
 
 
 

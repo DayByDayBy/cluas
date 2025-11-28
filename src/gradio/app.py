@@ -198,7 +198,8 @@ async def chat_fn(message: str, history: list):
             formatted, _ = format_message(name, sanitized_response)
             history.append({
                 "role": "assistant", 
-                "content": [{"type": "text", "text": formatted}]})
+                "content": [{"type": "text", "text": formatted}]
+            })
             yield history
             await asyncio.sleep(delay)
         except Exception as e:
@@ -334,7 +335,10 @@ async def deliberate(
             conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
             display_text = html.escape(text)
             formatted, _ = format_message(name, display_text)
-            chat_entry = {"role": "assistant", "content": [{"type": "text", "text": formatted}]}
+            chat_entry = {
+                "role": "assistant",
+                "content": [{"type": "text", "text": formatted}]
+            }
             chat_history.append(chat_entry)
 
             entry = {
@@ -506,7 +510,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 label="Council Discussion",
                 height=600,
                 show_label=True,
-                avatar_images=("avatars/user.png", None)  # bot avatar set dynamically
+                avatar_images=("avatars/user.png", avatar_images)  # bot avatar set dynamically
             )
 
             # User input row

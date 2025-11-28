@@ -434,28 +434,27 @@ async def run_deliberation_and_export(question, rounds, summariser):
     """Run the deliberation AND produce a downloadable .txt file."""
     
     if not question or question.strip() == "":
-        return [], None
+        return "<p>Please enter a question.</p>", None
 
     try:
-        # Run deliberation
-        result = await deliberate(question, rounds=rounds, summariser=summariser)
+        # run deliberation
+        result = await deliberate(
+            question, 
+            rounds=rounds, 
+            summariser=summariser,
+            format="llm"  # to ensure it actually gets text format
+        )
         
-        # Format text for export from conversation history
-        history_items = result["history"]
-        if isinstance(history_items, list) and history_items:
-            if isinstance(history_items[0], str):
-                # LLM format
-                text_content = "\n".join(history_items)
-            else:
-                # Chat format
-                text_content = "\n".join([
-                    item.get("content", [{}])[0].get("text", "") 
-                    for item in history_items
-                ])
-        else:
-            text_content = "No deliberation results."
-
-        # Create temporary file
+       # format html for display
+        display_html = format_deliberation_html(result["history"])
+        display_html += f'''
+            <div class="delib-summary">
+                <h3>Final Summary ({result['final_summary']['by']})</h3>
+                <p>{html.escape(result['final_summary']['content'])}</p>
+            </div>
+        '''
+        
+        text_content = "\n\n".join(result["history"])
         tmp_fd, tmp_path = tempfile.mkstemp(suffix=".txt")
         with open(tmp_fd, "w", encoding="utf-8") as tmp_file:
             tmp_file.write(f"Question: {question}\n")
@@ -467,11 +466,12 @@ async def run_deliberation_and_export(question, rounds, summariser):
             tmp_file.write("\n\n" + "=" * 80 + "\n")
             tmp_file.write(f"Final Summary ({result['final_summary']['by']}):\n")
             tmp_file.write(result['final_summary']['content'])
-
-        return result["history"], tmp_path
+            
+        return display_html, tmp_path
+        
     except Exception as e:
-        logger.error(f"Deliberation error: {e}")
-        return [], None
+        logger.error(f"Deliberation error: {e}", exc_info=True)
+        return f"<p style='color: red;'>Error: {str(e)}</p>", None
 
 
 def format_deliberation_html(history: List[str]) -> str:

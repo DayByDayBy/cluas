@@ -178,3 +178,29 @@
 .delib-content {
     line-height: 1.5;
 }
+
+
+
+/* summary stuff */
+
+
+.delib-summary {
+    margin-top: 2em;
+    padding: 1.5em;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    border-left: 4px solid #ffd700;
+}
+
+.delib-summary h3 {
+    color: #fff;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    font-size: 1.2em;
+}
+
+.delib-summary p {
+    color: #f0f0f0;
+    margin: 0;
+    line-height: 1.6;
+}

@@ -37,8 +37,8 @@ class Raven:
                 "primary": "groq",
                 "fallback": ["nebius"],
                 "models": {
-                    "groq": "llama-3.1-70b-versatile",
-                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                    "groq": "llama-3.3-70b-versatile",
+                    "nebius": "meta-llama/Llama-3.3-70B-Instruct-fast"
                 },
                 "timeout": 30,
                 "use_cloud": True

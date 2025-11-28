@@ -468,7 +468,7 @@ theme = gr.themes.Soft(
 )
 
 # Create Gradio interface
-with gr.Blocks(title="Cluas Huginn", theme=theme, css=CUSTOM_CSS) as demo:
+with gr.Blocks(title="Cluas Huginn") as demo:
 
     # Branding / tagline
     gr.Markdown("""
@@ -506,8 +506,7 @@ with gr.Blocks(title="Cluas Huginn", theme=theme, css=CUSTOM_CSS) as demo:
                 label="Council Discussion",
                 height=600,
                 show_label=True,
-                avatar_images=tuple(avatar_images),
-                user_avatar="avatars/user.png"
+                avatar_images=("avatars/user.png", None)  # bot avatar set dynamically
             )
 
             # User input row
@@ -615,4 +614,4 @@ if __name__ == "__main__":
         sys.exit(0)
     
     demo.queue()
-    demo.launch(theme=theme)
+    demo.launch(theme=theme, css=CUSTOM_CSS)

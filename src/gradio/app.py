@@ -154,16 +154,17 @@ async def get_character_response(character, message: str, history: List) -> str:
 
 
 async def chat_fn(message: str, history: list):
-    """Async chat handler with sequential responses"""
+    """Async chat handler for HTML-rendered chat with typing indicator."""
     if not message.strip():
         yield history
         return
     
-    sanitized_message = html.escape(message)
+    # Don't escape here — renderer will handle it
+    user_message = message
     
     history.append({
         "role": "user",
-        "content": [{"type": "text", "text": sanitized_message}]
+        "content": [{"type": "text", "text": user_message}]
     })
     yield history
     
@@ -173,7 +174,7 @@ async def chat_fn(message: str, history: list):
         if mentioned_chars and name not in mentioned_chars:
             continue
         
-        # animated typing indicator
+        # Animated typing indicator
         for i in range(4):
             dots = "." * i
             typing_msg = {
@@ -186,26 +187,24 @@ async def chat_fn(message: str, history: list):
                 history[-1]["content"][0]["text"] = f"{emoji}{dots}"
             yield history
             await asyncio.sleep(0.2)
-            
+        
         try:
-            response = await get_character_response(
-                char_obj, 
-                sanitized_message, 
-                history[:-1])
-            history.pop()
-            sanitized_response = html.escape(response)
-            formatted, _ = format_message(name, sanitized_response)
+            response = await get_character_response(char_obj, user_message, history[:-1])
+            
+            history.pop()  # remove typing indicator
+            
+            formatted, _ = format_message(name, response)  # don't escape, HTML renderer will
             history.append({
-                "role": "assistant", 
+                "role": "assistant",
                 "content": [{"type": "text", "text": formatted}]
             })
             yield history
             await asyncio.sleep(delay)
+        
         except Exception as e:
             logger.error(f"{name} error: {e}")
             history.pop()
             yield history
-
 
 def _phase_instruction(phase: str) -> str:
     return PHASE_INSTRUCTIONS.get(phase, "")
@@ -536,12 +535,8 @@ with gr.Blocks(title="Cluas Huginn") as demo:
             ]
 
             # Chatbot with avatars
-            chatbot = gr.Chatbot(
-                label="Council Discussion",
-                height=600,
-                show_label=True,
-                avatar_images=("avatars/user.png", avatar_images)  # bot avatar set dynamically
-            )
+            chat_html = gr.HTML(elem_id="chat-container")
+            chat_state = gr.State([])
 
             # User input row
             with gr.Row():

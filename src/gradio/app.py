@@ -172,7 +172,7 @@ async def chat_fn(message: str, history: list):
             await asyncio.sleep(getattr(char, "delay", 1.0))
         except Exception as e:
             logger.error(f"{char.name} error: {e}")    
-            history.pop
+            history.pop()
             yield history
             
         

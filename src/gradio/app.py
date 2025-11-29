@@ -14,6 +14,8 @@ from src.characters.raven import Raven
 from src.characters.crow import Crow
 from src.characters.base_character import Character
 from src.characters.registry import register_instance, get_all_characters, REGISTRY
+from src.gradio.types import BaseMessage, UIMessage, to_llm_history, to_gradio_history, from_gradio_format
+
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +87,6 @@ def parse_mentions(message: str) -> list[str] | None:
     return mentions or None
 
 
-
-
 def format_message(character: Character, message: str) -> Tuple[str, str]:
     """Format message with character name and emoji"""
     emoji = getattr(character, "emoji", "💬")
@@ -97,47 +97,38 @@ def format_message(character: Character, message: str) -> Tuple[str, str]:
     
     return formatted, name
 
-async def get_character_response(character: Character, message: str, history: List) -> str:
-    """Get response from a character with graceful error handling"""
-    conversation_history = []
-    for msg in history:
-        role = msg.get("role")
-        content_blocks = msg.get("content", [])
-        
-        if content_blocks and isinstance(content_blocks, list):
-            text = content_blocks[0].get("text", "") if content_blocks else ""
-        else:
-            text = ""
-            
-            
-        conversation_history.append({"role": role, "content": text})
-    
+async def get_character_response(char: Character, message: str, llm_history: List[Dict]) -> str:
+    """Get response from a character; uses pre-formatted llm_history"""
     try:
-        response = await character.respond(message, conversation_history)
+        
+        response = await char.respond(message, llm_history)
         return response
     except Exception as e:
-        logger.error(f"{character.name} error: {str(e)}")
+        logger.error(f"{char.name} error: {str(e)}")
         
-        # caracter-specific error messages
+        # character-specific error messages
         error_messages = {
             "Corvus": "*pauses mid-thought, adjusting spectacles* Hmm, I seem to have lost my train of thought...",
             "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
             "Raven": "Internet being slow again. Typical.",
             "Crow": "*silent, gazing into the distance*"
         }
-        return error_messages.get(character.name, f"*{character.name} seems distracted*")
+        return error_messages.get(char.name, f"*{char.name} seems distracted*")
+        
 
 
 async def chat_fn(message: str, history: list):
-    """Async chat handler for HTML-rendered chat with typing indicator."""
+    """async chat handler, using dataclasses internally"""
     if not message.strip():
         yield history
         return
     
-    history.append({
-        "role": "user",
-        "content": [{"type": "text", "text": message}]
-    })
+    internal_history = [from_gradio_format(msg) for msg in history]
+    
+    user_msg = BaseMessage(role="user", speaker="user", content=message)
+    internal_history.append(user_msg)
+    
+    history.append(user_msg.to_gradio_format())
     yield history
     
     mentioned_chars = parse_mentions(message)
@@ -149,34 +140,42 @@ async def chat_fn(message: str, history: list):
         # typing indicator
         for i in range(4):
             dots = "." * i
-            typing_msg = {
-                "role": "assistant",
-                "content": [{"type": "text", "text": f"{char.emoji}{dots}"}]
-            }
+            typing_msg = UIMessage.from_character(char, f"{dots}", len(internal_history))
+
             if i == 0:
-                history.append(typing_msg)
+                history.append(typing_msg.to_gradio_format())
             else:
-                history[-1]["content"][0]["text"] = f"{char.emoji}{dots}"
+                history[-1] = typing_msg.to_gradio_format()
             yield history
             await asyncio.sleep(0.25)
         
         try:
-            response = await get_character_response(char, message, history[:-1])
+            llm_history = to_llm_history(internal_history[-5:])
+            response = await get_character_response(char, message, llm_history)
             
             history.pop()  # removes typing indicator
             
+            ui_msg = UIMessage.from_character(char, response, len(internal_history))
+            internal_history.append(ui_msg)
+        
+            
             formatted, _ = format_message(char, response)
-            history.append({
-                "role": "assistant",
-                "content": [{"type": "text", "text": formatted}]
-            })
+            
+            display_msg = BaseMessage(
+                role="assistant",
+                speaker=char.name.lower(),
+                content=formatted
+                )
+            
+            history.append(display_msg.to_gradio_format())
             yield history
             await asyncio.sleep(getattr(char, "delay", 1.0))
-        
         except Exception as e:
-            logger.error(f"{char.name} error: {e}")
-            history.pop()
+            logger.error(f"{char.name} error: {e}")    
+            history.pop
             yield history
+            
+        
 
 def _phase_instruction(phase: str) -> str:
     return PHASE_INSTRUCTIONS.get(phase, "")

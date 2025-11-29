@@ -1,5 +1,6 @@
 from typing import Literal, List, Dict
 from dataclasses import dataclass
+from src.characters import REGISTRY
 
 @dataclass
 class BaseMessage:
@@ -55,14 +56,14 @@ def from_gradio_format(gradio_msg: Dict) -> BaseMessage:
     role = gradio_msg["role"]
     content_blocks = gradio_msg.get("content", [])
     text = content_blocks[0].get("text", "") if content_blocks else ""
+    text_strip = text.lstrip()
     
-    # Extract speaker from formatted text if it exists
-    # Format: "🪶 Corvus: message text"
     speaker = "user" if role == "user" else "assistant"
-    if role == "assistant" and ":" in text:
-        # Try to extract speaker name
-        parts = text.split(":", 1)
-        if len(parts) == 2:
-            speaker = parts[0].strip().split()[-1].lower()
+    if speaker == "assistant":
+        for char in REGISTRY.values():
+            prefix = f"{char.emoji} {char.name}:".lower()
+            if text_strip.lower().startswith(prefix):
+                speaker = char.name
+                break
     
     return BaseMessage(role=role, speaker=speaker, content=text)

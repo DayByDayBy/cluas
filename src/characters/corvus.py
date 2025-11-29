@@ -162,11 +162,20 @@ class Corvus(Character):
         self.paper_memory._write_memory({})
         logger.info(f"{self.name}'s memory cleared.")
 
-
     
     async def respond(self, message: str,history: Optional[List[Dict]] = None) -> str:
         
-        """Generate a response."""
+        """ Generate a response.
+                    
+                    Generate a response.
+                    
+                    Args:
+                        message: User's message
+                        history: LLM-formatted history (already flat format)
+                    
+                    Returns:
+                        Plain text response (no formatting)
+        """
         
         if self.use_cloud:
             return await self._respond_cloud(message, history)

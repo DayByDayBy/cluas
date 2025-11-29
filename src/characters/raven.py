@@ -13,15 +13,23 @@ from src.cluas_mcp.web.trending import get_trends
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.prompts.character_prompts import raven_system_prompt
+from src.characters.base_character import Character
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class Raven:
-    def __init__(self, provider_config=None, location="Seattle, WA"):
-        self.name = "Raven"
-        self.location = location
+class Raven(Character):
+    name = "Raven"
+    emoji = "🦅"
+    color = "#2E8B57"
+    default_location = "Seattle, WA"
+    delay = 1.0
+    def __init__(self, provider_config: Optional[Dict] = None, location: Optional[str] = None):
+        super().__init__(location, provider_config)
+        
+        self.role = "Choleric activist challenging misinformation and demanding accountability"
+        self.tone = "Direct, assertive, justice-oriented, calls out weak claims"
         self.tools = ["verify_news", "explore_web", "get_trends"]
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
@@ -180,11 +188,11 @@ class Raven:
 
     async def respond(self, 
                      message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
+                     history: Optional[List[Dict]] = None) -> str:
         """Generate a response."""
         if self.use_cloud:
-            return await self._respond_cloud(message, conversation_history)
-        return self._respond_ollama(message, conversation_history)
+            return await self._respond_cloud(message, history)
+        return self._respond_ollama(message, history)
 
     async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use cloud providers with tool calling for Raven's investigative workflow."""

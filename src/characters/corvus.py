@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Corvus(Character):
     
     name = "Corvus"
-    emoji = "🪶"
+    emoji = "🐦‍⬛"
     color = "#2596be"
     default_location = "Glasgow, Scotland"
     delay = 1.5

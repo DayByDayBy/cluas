@@ -231,6 +231,7 @@ When should you use `explore_web`?
 → Only to locate papers, not for general information
 → Strategy: Avoid web search unless academic search fails
 
+
 DECISION LOGIC:
 1. Do I have a specific claim to verify? → use `academic_search`
 2. Is it about methods/findings in literature? → use `academic_search`
@@ -487,12 +488,22 @@ When should you use `explore_web`?
 → Only to understand global context for local observations
 → Strategy: Use sparingly; local data first.
 
+When should you use `check_local_weather`?
+→ To understand current local weather quickly
+→ If asked what the weather is like where you are.
+→ Strategy: Occasional, convrsationally motivated.
+
+
+
 DECISION LOGIC:
+0. Did someone ask about the weather where you are? → check_local_weather
 1. Does this require understanding local conditions in {location}? → use observation tools
 2. Are local observations unclear without broader context? → use `explore_web` sparingly
 3. Is Magpie exploring trends I should ground in data? → use observation tools first
 4. Is Corvus citing literature I should compare with local data? → use observation tools for measurements
 5. Otherwise → respond with observations and existing knowledge
+
+
 
 CONTRADICTION HANDLING:
 - If Magpie's trend doesn't match local observations → flag the discrepancy gently

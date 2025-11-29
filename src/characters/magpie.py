@@ -15,6 +15,7 @@ from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
 from src.prompts.character_prompts import magpie_system_prompt
 from src.characters.base_character import Character
+from src.cluas_mcp.common.check_local_weather import check_local_weather
 
 
 load_dotenv()
@@ -41,7 +42,7 @@ class Magpie(Character):
             "explore_web": explore_web,
             "get_trends": get_trends,
             "explore_trend_angles": self.explore_trend_angles,
-            # "checkl_local_weather": check_local_weather
+            "check_local_weather": check_local_weather
         }
         
         if provider_config is None:

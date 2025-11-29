@@ -10,8 +10,11 @@ from openai import OpenAI
 from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
+from src.cluas_mcp.common.check_local_weather import check_local_weather
 from src.prompts.character_prompts import corvus_system_prompt
 from src.characters.base_character import Character
+from src.cluas_mcp.web.explore_web import explore_web
+
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -34,7 +37,10 @@ class Corvus(Character):
         self.paper_memory = PaperMemory() 
         self.observation_memory = ObservationMemory(location=self.location)
         self.tool_functions = {
-            "academic_search": academic_search
+            "academic_search": academic_search,
+            "check_local_weather": check_local_weather,
+            "explore_web": explore_web,
+
         }
 
         if provider_config is None:

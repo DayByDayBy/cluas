@@ -11,7 +11,6 @@ from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.prompts.character_prompts import corvus_system_prompt
-from src.gradio.types import BaseMessage, UIMessage
 from src.characters.base_character import Character
 
 load_dotenv()

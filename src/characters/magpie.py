@@ -41,7 +41,8 @@ class Magpie(Character):
         self.tool_functions = {
             "explore_web": explore_web,
             "get_trends": get_trends,
-            "explore_trend_angles": self.explore_trend_angles
+            "explore_trend_angles": self.explore_trend_angles,
+            # "checkl_local_weather": check_local_weather
         }
         
         if provider_config is None:

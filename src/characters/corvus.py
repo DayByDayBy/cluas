@@ -365,4 +365,3 @@ class Corvus(Character):
         prompt_parts.append("Corvus:")
         
         return "\n\n".join(prompt_parts)
-

@@ -19,17 +19,26 @@ from src.cluas_mcp.observation.observation_entrypoint import (
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.prompts.character_prompts import crow_system_prompt
+from src.characters.base_character import Character
 
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-class Crow:
+class Crow(Character):
+    name = "Crow"
+    emoji = "🕊️"
+    color = "#1C1C1C"
+    default_location = "Tokyo, Japan"
+    delay = 1.0
     
-    def __init__(self, provider_config: Optional[Dict] = None, location: str = "Tokyo, Japan"):
-        self.name = "Crow"
-        self.location = location  # crow's home location
+    def __init__(self, provider_config: Optional[Dict] = None, location: Optional[str] = None):
+        super().__init__(location, provider_config)
+        
+        self.role = "Phlegmatic observer. Grounds all analysis in measurements and data. Notices what others miss."
+        self.tone = "Thoughtful, deliberate, calm. Patient, detail-oriented. Shares specific observations; never guesses."
+
         self.observation_memory = ObservationMemory()
         self.paper_memory = PaperMemory()
         
@@ -48,8 +57,8 @@ class Crow:
                 "primary": "groq",
                 "fallback": ["nebius"],
                 "models": {
-                    "groq": "llama-3.1-70b-versatile",
-                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                    "groq": "qwen/qwen3-32b",
+                    "nebius": "Qwen3-30B-A3B-Instruct-2507"
                 },
                 "timeout": 30,
                 "use_cloud": True
@@ -227,11 +236,11 @@ class Crow:
 
     async def respond(self, 
                      message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
+                     history: Optional[List[Dict]] = None) -> str:
         """Generate a response."""
         if self.use_cloud:
-            return await self._respond_cloud(message, conversation_history)
-        return self._respond_ollama(message, conversation_history)
+            return await self._respond_cloud(message, history)
+        return self._respond_ollama(message, history)
     
     async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use configured cloud providers with tools."""

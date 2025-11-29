@@ -14,15 +14,26 @@ from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
 from src.prompts.character_prompts import magpie_system_prompt
+from src.characters.base_character import Character
 
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-class Magpie:
-    def __init__(self, provider_config: Optional[Dict] = None, location: str = "Brooklyn, NY"):
-        self.name = "Magpie"
-        self.location = location
+
+
+
+class Magpie(Character):
+    name = "Magpie"
+    emoji = "🪶"
+    color = "#c91010"
+    default_location = "Brooklyn, NY"
+    delay = 1.2
+    def __init__(self, provider_config: Optional[Dict] = None, location: Optional[str] = None):
+        super().__init__(location, provider_config)
+        
+        self.role = "Sanguine trendspotter focused on emerging patterns and connections"
+        self.tone = "Upbeat, curious, enthusiastic, loves surprising connections"
         self.tools = ["explore_web", "get_trends", "explore_trend_angles"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
@@ -38,8 +49,8 @@ class Magpie:
                 "primary": "groq",
                 "fallback": ["nebius"],
                 "models": {
-                    "groq": "llama-3.1-70b-versatile",
-                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                    "groq": "qwen/qwen3-32b",
+                    "nebius": "Qwen3-30B-A3B-Instruct-2507"
                 },
                 "timeout": 30,
                 "use_cloud": True
@@ -239,11 +250,11 @@ class Magpie:
 
     async def respond(self, 
                      message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
+                     history: Optional[List[Dict]] = None) -> str:
         """Generate a response."""
         if self.use_cloud:
-            return await self._respond_cloud(message, conversation_history)
-        return self._respond_ollama(message, conversation_history)
+            return await self._respond_cloud(message, history)
+        return self._respond_ollama(message, history)
     
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use Ollama."""

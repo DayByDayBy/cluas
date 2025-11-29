@@ -65,15 +65,16 @@ async def list_tools() -> list[Tool]:
                 "required": []
             }
         ),
+
         Tool(
-            name="get_quick_facts",
-            description="Get quick facts about a topic",
+            name="explore_trend_angles",
+            description="Deep dive on a trend",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "topic": {
                         "type": "string",
-                        "description": "Topic to get facts about"
+                        "description": "Trend or topic to explore"
                     }
                 },
                 "required": ["topic"]
@@ -241,20 +242,6 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
         formatted = format_news_results(results)
         return [TextContent(type="text", text=formatted)]
     
-    elif tool_name == "get_environmental_data":
-        location = arguments.get("location", "global")
-        metric = arguments.get("metric", "temperature")
-        results = await loop.run_in_executor(None, get_environmental_data, location, metric)
-        formatted = format_environmental_data(results)
-        return [TextContent(type="text", text=formatted)]
-    
-    elif tool_name == "verify_claim":
-        claim = arguments.get("claim")
-        if not claim:
-            raise ValueError("claim is required for verify_claim")
-        results = await loop.run_in_executor(None, verify_claim, claim)
-        formatted = format_verification_results(results)
-        return [TextContent(type="text", text=formatted)]
     
     # Crow tools
     elif tool_name == "get_bird_sightings":

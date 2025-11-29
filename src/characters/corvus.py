@@ -11,15 +11,26 @@ from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.prompts.character_prompts import corvus_system_prompt
+from src.characters.base_character import Character
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-class Corvus:
+class Corvus(Character):
     
-    def __init__(self, provider_config: Optional[Dict] = None, location: str = "Glasgow, Scotland"):
-        self.name = "Corvus"
-        self.location = location
+    name = "Corvus"
+    emoji = "🪶"
+    color = "#2596be"
+    default_location = "Glasgow, Scotland"
+    delay = 1.5
+    
+    def __init__(self, provider_config: Optional[Dict] = None, location: Optional[str] = None):
+        
+        super().__init__(location, provider_config)
+        
+        self.role = "Melancholic scholar focused on academic rigor"
+        self.tone = "Precise, evidence-driven, humble, cites papers when relevant."
+        
         self.paper_memory = PaperMemory() 
         self.observation_memory = ObservationMemory(location=self.location)
         self.tool_functions = {
@@ -31,8 +42,8 @@ class Corvus:
                 "primary": "groq",
                 "fallback": ["nebius"],
                 "models": {
-                    "groq": "llama-3.1-70b-versatile",
-                    "nebius": "meta-llama/Meta-Llama-3.1-70B-Instruct"
+                    "groq": "qwen/qwen3-32b",
+                    "nebius": "Qwen3-30B-A3B-Instruct-2507"
                 },
                 "timeout": 30,
                 "use_cloud": True
@@ -150,20 +161,29 @@ class Corvus:
         self.paper_memory._write_memory({})
         logger.info(f"{self.name}'s memory cleared.")
 
-
     
-    async def respond(self, 
-                     message: str,
-                     conversation_history: Optional[List[Dict]] = None) -> str:
-        """Generate a response."""
+    async def respond(self, message: str,history: Optional[List[Dict]] = None) -> str:
+        
+        """ Generate a response.
+                    
+                    Generate a response.
+                    
+                    Args:
+                        message: User's message
+                        history: LLM-formatted history (already flat format)
+                    
+                    Returns:
+                        Plain text response (no formatting)
+        """
+        
         if self.use_cloud:
-            return await self._respond_cloud(message, conversation_history)
-        return self._respond_ollama(message, conversation_history)
+            return await self._respond_cloud(message, history)
+        return self._respond_ollama(message, history)
     
     async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
         """Use configured cloud providers with tools."""
         
-        if "paper" in message.lower() and len(message.split()) < 10:   # maybe add oyther keywords? "or study"? "or article"?
+        if "paper" in message.lower() and len(message.split()) < 10:   # maybe add other keywords? "or study"? "or article"?
             recalled = self.recall_paper(message)
             if recalled:
                 return f"Oh, I remember that one! {recalled['title']}. {recalled.get('snippet', '')} Want me to search for more details?"

@@ -1,7 +1,7 @@
 import os
 import logging
-from serpapi import GoogleSearch, DuckDuckGoSearch, BingSearch
-from newsapi import NewsApiClient
+import serpapi
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +31,72 @@ def verify_news(query: str, max_results: int = 5) -> dict:
             if result["total_results"] > 0:
                 return result
         except Exception as e:
-            logger.warning(f"SerpAPI DuckDuckGo failed: {e}, falling back to Google News")
+            logger.warning(
+                f"SerpAPI DuckDuckGo failed: {e}, falling back to Google"
+            )
 
-    # Try SerpAPI Google News
+    # Try SerpAPI Google
     if api_key:
         try:
-            logger.info(f"Attempting SerpAPI Google News for: {query}")
+            logger.info(f"Attempting SerpAPI Google for: {query}")
             result = _verify_news_google(query, max_results, api_key)
             if result["total_results"] > 0:
                 return result
         except Exception as e:
-            logger.warning(f"SerpAPI Google News failed: {e}, falling back to mock")
+            logger.warning(f"SerpAPI Google failed: {e}, falling back to Bing")
+
+    # Try SerpAPI Bing
+    if api_key:
+        try:
+            logger.info(f"Attempting SerpAPI Bing for: {query}")
+            result = _verify_news_bing(query, max_results, api_key)
+            if result["total_results"] > 0:
+                return result
+        except Exception as e:
+            logger.warning(f"SerpAPI Bing failed: {e}, falling back to mock")
+
+def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
+    """Search news using NewsAPI via direct HTTP request."""
+    api_key = os.getenv("NEWS_API_KEY")
+    if not api_key:
+        raise ValueError("NEWS_API_KEY not found")
+    
+    try:
+        response = requests.get(
+            "https://newsapi.org/v2/everything",
+            params={
+                "q": query,
+                "language": "en",
+                "sortBy": "publishedAt",
+                "pageSize": max_results,
+                "apiKey": api_key
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        articles = []
+        for item in data.get('articles', [])[:max_results]:
+            articles.append({
+                "title": item.get('title', 'No title'),
+                "url": item.get('url', ''),
+                "summary": item.get('description') or item.get('content', '')[:200] if item.get('content') else '',
+                "source": item.get('source', {}).get('name', 'Unknown'),
+                "published_date": item.get('publishedAt', '')[:10],
+                "author": item.get('author') or 'Unknown'
+            })
+        
+        return {
+            "articles": articles,
+            "query": query,
+            "total_results": len(articles),
+            "source": "newsapi"
+        }
+    except Exception as e:
+        logger.error(f"NewsAPI error: {e}")
+        raise
+
 
     # Fall back to mock
     logger.warning("Using mock data")
@@ -82,78 +137,100 @@ def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
         raise
 
 def _verify_news_duckduckgo(query: str, max_results: int, api_key: str) -> dict:
-    """Search using SerpAPI DuckDuckGo (general search)"""
-    search = DuckDuckGoSearch({
-        "q": query,
-        "api_key": api_key
-    })
-    data = search.get_dict()
-    articles = []
-    for item in data.get("organic_results", [])[:max_results]:
-        articles.append({
-            "title": item.get("title", "No title"),
-            "url": item.get("link", ""),
-            "summary": item.get("snippet", ""),
-            "source": item.get("source", "Unknown"),
-            "published_date": "Unknown",
-            "author": "Unknown"
-        })
-    return {
-        "articles": articles,
-        "query": query,
-        "total_results": len(articles),
-        "source": "duckduckgo_via_serpapi"
-    }
+    """Search using SerpAPI DuckDuckGo."""
+    return _run_serpapi_search(
+        query=query,
+        max_results=max_results,
+        api_key=api_key,
+        engine="duckduckgo",
+        source="duckduckgo_via_serpapi"
+    )
 
 def _verify_news_google(query: str, max_results: int, api_key: str) -> dict:
-    """Search using SerpAPI Google News"""
-    search = GoogleSearch({
-        "engine": "google_news",
-        "q": query,
-        "api_key": api_key,
-        "num": max_results
-    })
-    data = search.get_dict()
-    articles = []
-    for item in data.get("news_results", [])[:max_results]:
-        articles.append({
-            "title": item.get("title", "No title"),
-            "url": item.get("link", ""),
-            "summary": item.get("snippet", ""),
-            "source": item.get("source", {}).get("name", "Unknown"),
-            "published_date": item.get("date", "Unknown"),
-            "author": "Unknown"
-        })
-    return {
-        "articles": articles,
-        "query": query,
-        "total_results": len(articles),
-        "source": "google_news_via_serpapi"
-    }
+    """Search using SerpAPI Google."""
+    return _run_serpapi_search(
+        query=query,
+        max_results=max_results,
+        api_key=api_key,
+        engine="google",
+        source="google_via_serpapi"
+    )
 
 def _verify_news_bing(query: str, max_results: int, api_key: str) -> dict:
-    """Search using SerpAPI Bing News"""
-    search = BingSearch({
-        "q": query,
-        "api_key": api_key,
-        "count": max_results
-    })
-    data = search.get_dict()
+    """Search using SerpAPI Bing."""
+    return _run_serpapi_search(
+        query=query,
+        max_results=max_results,
+        api_key=api_key,
+        engine="bing",
+        source="bing_via_serpapi"
+    )
+
+
+def _run_serpapi_search(
+    query: str,
+    max_results: int,
+    api_key: str,
+    engine: str,
+    source: str
+) -> dict:
+    """Execute a SerpAPI search and normalize the response."""
+    try:
+        results = serpapi.search({
+            "q": query,
+            "engine": engine,
+            "api_key": api_key,
+            "num": max_results
+        })
+        return _format_serpapi_results(results, query, max_results, source)
+    except Exception as exc:
+        logger.error(f"{engine.title()} search failed: {exc}")
+        return _empty_serpapi_response(query, source)
+
+
+def _format_serpapi_results(
+    results: dict,
+    query: str,
+    max_results: int,
+    source: str
+) -> dict:
+    """Normalize SerpAPI result structures into the shared article format."""
+    raw_items = (
+        results.get("news_results")
+        or results.get("organic_results")
+        or results.get("items")
+        or []
+    )
     articles = []
-    for item in data.get("news_results", [])[:max_results]:
+    for item in raw_items[:max_results]:
+        source_name = item.get("source")
+        if isinstance(source_name, dict):
+            source_name = source_name.get("name")
         articles.append({
-            "title": item.get("title", "No title"),
-            "url": item.get("url", ""),
-            "summary": item.get("snippet", ""),
-            "source": item.get("source", "Unknown"),
-            "published_date": item.get("date", "Unknown"),
-            "author": "Unknown"
+            "title": item.get("title") or item.get("name") or "No title",
+            "url": item.get("link") or item.get("url") or "",
+            "summary": item.get("snippet") or item.get("content", "")[:200],
+            "source": source_name or source,
+            "published_date": item.get("date")
+            or item.get("published_at")
+            or "Unknown",
+            "author": item.get("author") or "Unknown"
         })
     return {
         "articles": articles,
         "query": query,
         "total_results": len(articles),
-        "source": "bing_via_serpapi"
+        "source": source
+    }
+
+
+def _empty_serpapi_response(query: str, source: str) -> dict:
+    """Return an empty SerpAPI response structure."""
+    return {
+        "articles": [],
+        "query": query,
+        "total_results": 0,
+        "source": source
     }
     
 

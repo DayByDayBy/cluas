@@ -1,6 +1,6 @@
 from typing import Literal, List, Dict
 from dataclasses import dataclass
-from src.characters import REGISTRY
+from src.characters.registry import REGISTRY
 
 @dataclass
 class BaseMessage:

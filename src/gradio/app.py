@@ -14,7 +14,7 @@ from src.characters.raven import Raven
 from src.characters.crow import Crow
 from src.characters.base_character import Character
 from src.characters.registry import register_instance, get_all_characters, REGISTRY
-from src.gradio.types import BaseMessage, UIMessage, to_llm_history, to_gradio_history, from_gradio_format
+from src.gradio.types import BaseMessage, UIMessage, to_llm_history, from_gradio_format
 
 
 logger = logging.getLogger(__name__)

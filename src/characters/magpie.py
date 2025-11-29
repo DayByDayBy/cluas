@@ -34,7 +34,6 @@ class Magpie(Character):
         
         self.role = "Sanguine trendspotter focused on emerging patterns and connections"
         self.tone = "Upbeat, curious, enthusiastic, loves surprising connections"
-        self.tools = ["explore_web", "get_trends", "explore_trend_angles"]
         self.trend_memory = TrendMemory()
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)

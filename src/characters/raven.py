@@ -30,7 +30,6 @@ class Raven(Character):
         
         self.role = "Choleric activist challenging misinformation and demanding accountability"
         self.tone = "Direct, assertive, justice-oriented, calls out weak claims"
-        self.tools = ["verify_news", "explore_web", "get_trends"]
         self.paper_memory = PaperMemory()
         self.observation_memory = ObservationMemory(location=location)
         self.tool_functions = {

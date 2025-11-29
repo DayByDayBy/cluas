@@ -14,7 +14,7 @@ from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings,
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-mcp = Server("cluas-academic")
+mcp = Server("cluas-huginn")
 
 @mcp.list_tools()   
 async def list_tools() -> list[Tool]:    
@@ -193,6 +193,22 @@ async def list_tools() -> list[Tool]:
                 "required": ["data_type"]
             }
         ),
+        # nobody's tool, really:
+        Tool(
+            name="check_local_weather",
+            description="Get current local weather for a given location",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "Location to retrieve weather for (e.g., 'Tokyo, Japan', 'Glasgow, Scotland')",
+                        "default": "global"
+                    }
+                },
+                "required": []
+    }
+),
     ]
     
 @mcp.call_tool()
@@ -224,12 +240,10 @@ async def call_tool(tool_name: str, arguments: dict) -> list[TextContent]:
         formatted = format_trending_topics(results)
         return [TextContent(type="text", text=formatted)]
     
-    elif tool_name == "get_quick_facts":
-        topic = arguments.get("topic")
-        if not topic:
-            raise ValueError("topic is required for get_quick_facts")
-        results = await loop.run_in_executor(None, get_quick_facts, topic)
-        formatted = format_quick_facts(results)
+    elif tool_name == "check_local_weather":
+        location = arguments.get("location", "global")
+        results = await loop.run_in_executor(None, check_local_weather, location)
+        formatted = format_local_weather(results)
         return [TextContent(type="text", text=formatted)]
     
     # Raven tools
@@ -352,19 +366,17 @@ def format_trending_topics(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_quick_facts(results: dict) -> str:
-    """Format quick facts into readable string"""
-    output = []
-    output.append(f"=== Quick Facts: {results.get('topic', 'N/A')} ===\n")
-    
-    facts = results.get("facts", [])
-    if facts:
-        for i, fact in enumerate(facts, 1):
-            output.append(f"{i}. {fact}\n")
-    else:
-        output.append("No facts found.\n")
-    
-    return "\n".join(output)
+def format_local_weather(results: dict) -> str:
+    """Format local weather data into readable string"""
+    return (
+        f"=== Local Weather: {results.get('location', 'N/A')} ===\n"
+        f"Temperature: {results.get('temperature', 'N/A')}°C\n"
+        f"Feels like: {results.get('feels_like', 'N/A')}°C\n"
+        f"Conditions: {results.get('condition', 'N/A')}\n"
+        f"Wind: {results.get('wind_speed', 'N/A')} km/h\n"
+        f"Precipitation: {results.get('precipitation', 'N/A')}\n"
+        f"Time: {results.get('time', 'N/A')}\n"
+    )
 
 def format_news_results(results: dict) -> str:
     """Format news search results into readable string"""

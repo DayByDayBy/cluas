@@ -563,28 +563,6 @@ def format_deliberation_html(entries: list | dict) -> str:
     html_parts.append('</div>')
     return ''.join(html_parts)
 
-# theme = gr.themes.Soft(
-#     primary_hue=None,
-#     secondary_hue=None,
-#     neutral_hue=None,
-#     font=None,
-#     font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "monospace"],
-#     radius_size=None,
-#     spacing_size=None,
-#     text_size=None,
-# )
-
-
-# theme = gr.themes.Base(
-#     primary_hue=None,
-#     secondary_hue=None,
-#     neutral_hue=None,
-#     font=None,           # Let CSS handle fonts
-#     font_mono=None,      # CSS handles monospace fonts
-#     radius_size=None,    # CSS handles border-radius
-#     spacing_size=None,   # CSS handles spacing
-#     text_size=None,      # CSS handles text size
-# )
 
 # Create Gradio interface
 with gr.Blocks(title="Cluas Huginn") as demo:
@@ -604,14 +582,6 @@ with gr.Blocks(title="Cluas Huginn") as demo:
         # TAB 1: Chat mode
         with gr.Tab("Chat"):
             gr.Markdown("**Chat Mode:** Talk directly with the council. Use @CharacterName to address specific members.")
-            
-            # Optional accordion for full character bios
-            with gr.Accordion("Character Bios", open=False):
-                bio_lines = "\n".join([
-                    f"- **{char.name}** {char.emoji}: {char.location}" 
-                    for char in CHARACTERS
-                ])
-                gr.Markdown(bio_lines)
 
             # Load avatars dynamically from folder
             avatar_folder = Path("avatars")
@@ -630,17 +600,20 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 msg = gr.Textbox(
                     label="Your Message",
                     placeholder="Ask the council a question...",
-                    scale=3,
+                    scale=4,
                     container=False,
                 )
+                submit_btn = gr.Button("Send", variant="primary", scale=1)
+            
+            # API Key input (separated with spacing)
+            gr.HTML("<div style='margin-top: 20px;'></div>")  # Spacer
+            with gr.Column(scale=1, max_width=300):
                 user_key = gr.Textbox(
                     label="API Key (Optional)",
                     placeholder="OpenAI (sk-...), Anthropic (sk-ant-...), or HF (hf_...)",
                     type="password",
-                    scale=2,
-                    container=False,
+                    container=True,
                 )
-                submit_btn = gr.Button("Send", variant="primary", scale=1)
 
             # Handle submit
             msg.submit(chat_fn, [msg, chat_state, user_key], [chat_state], queue=True)\

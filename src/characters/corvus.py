@@ -45,11 +45,11 @@ class Corvus(Character):
 
         if provider_config is None:
             provider_config = {
-                "primary": "groq",
-                "fallback": ["nebius"],
+                "primary": "nebius",
+                "fallback": ["groq"],
                 "models": {
-                    "groq": "llama-3.1-8b-instant",
-                    "nebius": "meta-llama/Meta-Llama-3.1-8B-Instruct"
+                    "nebius": "Qwen3-235B-A22B-Instruct-2507",
+                    "groq": "llama-3.1-8b-instant"
                 },
                 "timeout": 30,
                 "use_cloud": True

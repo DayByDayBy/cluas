@@ -23,14 +23,14 @@ class Moderator(Character):
     def __init__(self, location: Optional[str] = None, provider_config: Optional[Dict] = None):
         super().__init__(location, provider_config)
         
-        # Simple provider config for moderator (no tools needed)
+        # Optimized config for moderator (summarization only, no tools)
         if provider_config is None:
             provider_config = {
-                "primary": "groq",
-                "fallback": ["nebius"],
+                "primary": "nebius",
+                "fallback": ["groq"],
                 "models": {
-                    "groq": "qwen/qwen3-32b",
-                    "nebius": "Qwen3-30B-A3B-Instruct-2507"
+                    "nebius": "Qwen3-30B-A3B-Instruct-2507",  # Quality 85, cost-effective for summaries
+                    "groq": "llama-3.1-8b-instant"  # Fallback
                 },
                 "timeout": 30,
                 "use_cloud": True

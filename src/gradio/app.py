@@ -322,10 +322,11 @@ async def deliberate(
                 text = f"*{name} could not respond.*"
             else:
                 text = response.strip()
+                logger.debug("Phase %s: %s response: '%s'", phase, name, text[:100] if text else "<EMPTY>")
 
             conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
-            display_text = html.escape(text)
-            formatted, _ = format_message(char_obj, display_text)
+            # Don't escape here - format_message will handle HTML properly
+            formatted, _ = format_message(char_obj, text)
             chat_entry = {
                 "role": "assistant",
                 "content": [{"type": "text", "text": formatted}]

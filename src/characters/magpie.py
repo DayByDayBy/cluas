@@ -392,7 +392,7 @@ class Magpie(Character):
                      user_key: Optional[str] = None) -> str:
         """Generate a response."""
         if self.use_cloud:
-            return await self._respond_cloud(message, history)
+            return await self._respond_cloud(message, history, user_key=user_key)
         return self._respond_ollama(message, history)
     
     def _respond_ollama(self, message: str, history: Optional[List[Dict]] = None) -> str:
@@ -435,7 +435,12 @@ class Magpie(Character):
         
         return "\n\n".join(prompt_parts)
     
-    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+    async def _respond_cloud(
+        self,
+        message: str,
+        history: Optional[List[Dict]] = None,
+        user_key: Optional[str] = None,
+    ) -> str:
         """Use configured cloud providers with tools."""
         messages = [{"role": "system", "content": self.get_system_prompt()}]
         
@@ -451,7 +456,8 @@ class Magpie(Character):
             messages=messages,
             tools=tools,
             temperature=0.8,
-            max_tokens=150
+            max_tokens=150,
+            user_key=user_key,
         )
         
         choice = first_response.choices[0]
@@ -514,7 +520,8 @@ class Magpie(Character):
                 final_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.8,
-                    max_tokens=200  # More tokens for synthesis
+                    max_tokens=200,  # More tokens for synthesis
+                    user_key=user_key,
                 )
                 
                 return final_response.choices[0].message.content.strip()

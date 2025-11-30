@@ -240,19 +240,21 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
         return 
     
     # Add typing indicators
+    typing_count = 0
     for char in mentioned:
         history.append({
             "role": "assistant",
             "content": f"*{char.name} is thinking...*",
             "name": char.name,
-            "emoji": char.emoji,
-            "typing": True
+            "avatar": f"avatars/{char.name.lower()}.png"
         })
-    
-    yield render_chat_html(history)  # Show typing indicators
-    
+        typing_count += 1
+
+    yield render_chat_html(history)
+
     # Remove typing indicators and add responses
-    history.pop()  # Remove last typing indicator
+    for _ in range(typing_count):
+        history.pop()  # Remove last typing indicator
     
     for char in mentioned:
         try:
@@ -563,17 +565,17 @@ async def run_deliberation_and_export(question, rounds, summariser, user_key: Op
             user_key=user_key
         )
         
-       # Create temp file for download with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', prefix=f'cluas_huginn_{timestamp}_') as f:
-        # format html for display
-        display_html = format_deliberation_html(result["phases"])
-        display_html += f'''
-            <div class="delib-summary">
-                <h3>Final Summary ({result['final_summary']['by']})</h3>
-                <p>{html.escape(result['final_summary']['content'])}</p>
-            </div>
-        '''
+        # Create temp file for download with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', prefix=f'cluas_huginn_{timestamp}_') as f:
+            # format html for display
+            display_html = format_deliberation_html(result["phases"])
+            display_html += f'''
+                <div class="delib-summary">
+                    <h3>Final Summary ({result['final_summary']['by']})</h3>
+                    <p>{html.escape(result['final_summary']['content'])}</p>
+                </div>
+            '''
         
         # Handle different history formats
         history = result["history"]
@@ -700,35 +702,38 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 for char in CHARACTERS
             ]
 
-            # Chatbot with avatars
-            chat_html = gr.HTML(elem_id="chat-container", interactive=True)
+            # Chatbot state
             chat_state = gr.State([])
-            
-            # User input row
-            with gr.Row():
-                msg = gr.Textbox(
-                    label="Your Message",
-                    placeholder="Ask the council a question...",
-                    scale=4,
-                    container=False,
-                )
-                submit_btn = gr.Button("Send", variant="primary", scale=1)
-                clear_btn = gr.Button("Clear Chat", variant="secondary", scale=1)
-            
-            # Example questions
-            gr.Examples(
-                examples=[
-                    "What do you think about artificial intelligence?",
-                    "@Corvus Can you explain Stoicism?",
-                    "@Crow @Raven Compare birds and technology",
-                    "Tell me about something fascinating",
-                    "@Magpie What's the most interesting thing you've found?"
-                ],
-                inputs=[msg],
-                label="Example Questions"
-            )
-            
-            # API Key input (separated with spacing)
+
+            # Main layout for chat interface
+            with gr.Row(elem_classes=["chat-layout"], equal_height=True):
+                # Left Column: Examples, Input, and Send button
+                with gr.Column(scale=1, min_width=340, elem_classes=["chat-input-col"]):
+                    gr.Examples(
+                        examples=[
+                            "What do you think about artificial intelligence?",
+                            "@Corvus Can you explain Stoicism?",
+                            "@Crow @Raven Compare birds and technology",
+                            "Tell me about something fascinating",
+                            "@Magpie What's the most interesting thing you've found?"
+                        ],
+                        inputs=[msg := gr.Textbox(
+                            label="Your Message",
+                            placeholder="Ask the council a question...",
+                            container=False,
+                        )],
+                        label="Example Questions"
+                    )
+                    gr.Markdown(" ")  # Small spacer
+                    submit_btn = gr.Button("Send", variant="primary", elem_classes=["chat-btn"])
+
+                # Right Column: Chat output and Clear button
+                with gr.Column(scale=3, min_width=600, elem_classes=["chat-output-col"]):
+                    chat_html = gr.HTML(elem_id="chat-container", interactive=True)
+                    gr.Markdown(" ")  # Small spacer
+                    clear_btn = gr.Button("Clear Chat", variant="secondary", elem_classes=["chat-btn"])
+
+            # API Key input (separated with spacing) - kept outside the main row
             gr.HTML("<div style='margin-top: 20px;'></div>")  # Spacer
             with gr.Column(scale=2, min_width=300):
                 user_key = gr.Textbox(
@@ -751,40 +756,39 @@ with gr.Blocks(title="Cluas Huginn") as demo:
         # TAB 2: Deliberation mode
         with gr.Tab("Deliberation"):
             gr.Markdown("""
-            ### 🧠 Council Deliberation
+            ### Council Deliberation
             Ask a question and let the council engage in structured debate:
             **thesis** (initial perspectives) → **antithesis** (critiques) → **synthesis** (integration).
             """)
 
-            with gr.Row():
-                question_input = gr.Textbox(
-                    label="Question for the Council",
-                    placeholder="What would you like the council to deliberate on?",
-                    lines=3,
-                    scale=2,
-                )
-                delib_user_key = gr.Textbox(
-                    label="API Key (Optional)",
-                    placeholder="OpenAI (sk-...), Anthropic (sk-ant-...), or HF (hf_...)",
-                    type="password",
-                    scale=1,
-                )
-
-            with gr.Row():
-                rounds_input = gr.Slider(
-                    minimum=1,
-                    maximum=3,
-                    value=1,
-                    step=1,
-                    label="Debate Rounds",
-                    info="More rounds = deeper analysis"
-                )
-                summariser_input = gr.Dropdown(
-                    ["Moderator", "Corvus", "Magpie", "Raven", "Crow"],
-                    value="Moderator",
-                    label="Final Summariser",
-                    info="Who provides the final synthesis?"
-                )
+            question_input = gr.Textbox(
+                label="Question for the Council",
+                placeholder="What would you like the council to deliberate on?",
+                lines=3,
+            )
+            gr.Markdown("\n") # Added padding
+            rounds_input = gr.Slider(
+                minimum=1,
+                maximum=3,
+                value=1,
+                step=1,
+                label="Debate Rounds",
+                info="More rounds = deeper analysis"
+            )
+            gr.Markdown("\n") # Added padding
+            delib_user_key = gr.Textbox(
+                label="API Key (Optional)",
+                placeholder="OpenAI (sk-...), Anthropic (sk-ant-...), or HF (hf_...)",
+                type="password",
+                container=True,
+            )
+            gr.Markdown("\n") # Added padding
+            summariser_input = gr.Dropdown(
+                ["Moderator", "Corvus", "Magpie", "Raven", "Crow"],
+                value="Moderator",
+                label="Final Summariser",
+                info="Who provides the final synthesis?"
+            )
 
             deliberate_btn = gr.Button("Deliberate", variant="primary", scale=1, elem_id="deliberate-btn")
             deliberation_output = gr.HTML(label="Deliberation Output")

@@ -107,6 +107,16 @@ button:hover {
     max-width: 75%;
 }
 
+.chat-btn {
+    display: flex;
+    justify-content: center;
+}
+
+.chat-btn button {
+    width: 220px;
+    max-width: 100%;
+}
+
 .chat-name {
     font-size: 0.85rem;
     font-weight: 600;

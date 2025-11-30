@@ -466,7 +466,32 @@ async def run_deliberation_and_export(question, rounds, summariser, user_key: Op
             </div>
         '''
         
-        text_content = "\n\n".join(result["history"])
+        # Handle different history formats
+        history = result["history"]
+        if isinstance(history, str):
+            # HTML format - already a single string
+            text_content = history
+        elif isinstance(history, list):
+            # LLM format - list of strings, join them
+            if all(isinstance(item, str) for item in history):
+                text_content = "\n\n".join(history)
+            else:
+                # Mixed format - extract text from dicts
+                text_parts = []
+                for item in history:
+                    if isinstance(item, str):
+                        text_parts.append(item)
+                    elif isinstance(item, dict) and "content" in item:
+                        if isinstance(item["content"], str):
+                            text_parts.append(item["content"])
+                        elif isinstance(item["content"], list):
+                            # Extract text from Gradio format
+                            for content_block in item["content"]:
+                                if isinstance(content_block, dict) and "text" in content_block:
+                                    text_parts.append(content_block["text"])
+                text_content = "\n\n".join(text_parts)
+        else:
+            text_content = str(history)
         
         
         # the code below could be it's own function, 

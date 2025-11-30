@@ -6,6 +6,7 @@ import html
 import random
 import re
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from src.characters.corvus import Corvus
@@ -562,7 +563,10 @@ async def run_deliberation_and_export(question, rounds, summariser, user_key: Op
             user_key=user_key
         )
         
-       # format html for display
+       # Create temp file for download with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', prefix=f'cluas_huginn_{timestamp}_') as f:
+        # format html for display
         display_html = format_deliberation_html(result["phases"])
         display_html += f'''
             <div class="delib-summary">

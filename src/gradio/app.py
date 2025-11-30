@@ -103,11 +103,26 @@ def format_message(character: Character, message: str) -> Tuple[str, str]:
 async def get_character_response(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None) -> str:
     """Get response from a character; uses pre-formatted llm_history"""
     try:
-        
+        logger.debug(f"Calling {char.name}.respond() with message: {message[:50]}...")
         response = await char.respond(message, llm_history, user_key=user_key)
+        logger.debug(f"{char.name} responded with: {response[:100] if response else '<EMPTY>'}")
+        
+        if not response or not response.strip():
+            logger.warning(f"{char.name} returned empty response")
+            # Fallback response when LLM returns empty
+            error_messages = {
+                "Corvus": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought...",
+                "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
+                "Raven": "Connection acting up again. Typical.",
+                "Crow": "*silent, gazing into the distance*"
+            }
+            return error_messages.get(char.name, f"*{char.name} seems distracted*")
+            
         return response
     except Exception as e:
         logger.error(f"{char.name} error: {str(e)}")
+        import traceback
+        logger.debug(f"Full traceback for {char.name}: {traceback.format_exc()}")
         
         # character-specific error messages
         error_messages = {
@@ -390,11 +405,18 @@ async def deliberate(
         )
         final_summary = await get_character_response(selected, summary_prompt, [], user_key=user_key)
 
-    history_output: List[Any]
     if format == "chat":
-        history_output = chat_history
+        # Use proper HTML formatting for chat format
+        if structure == "nested":
+            history_output = format_deliberation_html(phase_records)
+        else:
+            history_output = format_deliberation_html(flattened_records)
     else:
-        history_output = conversation_llm
+        # LLM format returns plain text
+        if structure == "nested":
+            history_output = phase_records
+        else:
+            history_output = flattened_records
 
     if structure == "nested":
         phase_output: Dict[str, Any] = phase_records

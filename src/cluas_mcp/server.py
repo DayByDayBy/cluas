@@ -274,7 +274,7 @@ async def call_tool(tool_name: str, arguments: dict) -> List[TextContent]:
 
 async def main():
     """"run the MCP server."""
-    logger.info("Starting cluas_huginn MCP Server...")
+    logger.info("Starting cluas_huginn MCP Server, the dialectic deliberative engine")
     async with stdio_server() as (read_stream, write_stream):
         await mcp.run(
             read_stream, 

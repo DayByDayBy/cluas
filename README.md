@@ -1,3 +1,61 @@
+<div class="corvid-banner">
+  <div class="corvid-banner-inner">
+    <h1>The Corvidian Council</h1>
+    <h2>A Multi-Agent Deliberation Engine</h2>
+    <div class="corvid-banner-meta">Anno MMXXV — Hackathon Edition</div>
+  </div>
+</div>
+
+<style>
+.corvid-banner {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 24px 0 32px;
+}
+
+.corvid-banner-inner {
+    background: #f5f4ef url('/file=static/paper.png') repeat;
+    background-size: 200px;
+    border: 2px solid rgba(139, 88, 40, 0.55); /* copper ink */
+    padding: 24px 32px;
+    border-radius: 12px;
+    max-width: 720px;
+    text-align: center;
+    font-family: Labrada, serif;
+    box-shadow:
+        0 0 1px rgba(0,0,0,0.05),
+        0 2px 6px rgba(0,0,0,0.06),
+        0 6px 12px rgba(0,0,0,0.04);
+}
+
+/* Title */
+.corvid-banner-inner h1 {
+    font-size: 1.9rem;
+    margin: 0;
+    color: #4a3524; /* ink brown */
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+/* Subtitle */
+.corvid-banner-inner h2 {
+    font-size: 1.05rem;
+    margin: 6px 0 10px;
+    font-weight: 500;
+    color: #6a5648;
+    letter-spacing: 0.03em;
+}
+
+/* Meta line */
+.corvid-banner-meta {
+    font-size: 0.9rem;
+    color: rgba(70, 50, 35, 0.75);
+    font-style: italic;
+    letter-spacing: 0.04em;
+}
+</style>
+
 ---
 title: cluas_huginn
 emoji: 💬

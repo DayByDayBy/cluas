@@ -95,23 +95,59 @@ class Corvus(Character):
             
             
     def _get_tool_definitions(self) -> List[Dict]:
-        return [{
-            "type": "function",
-            "function": {
-                "name": "academic_search",
-                "description": "Search academic papers in PubMed, ArXiv, and Semantic Scholar",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Search query for academic papers"
-                        }
-                    },
-                    "required": ["query"]
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "academic_search",
+                    "description": "Search academic papers in PubMed, ArXiv, and Semantic Scholar",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query for academic papers"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "check_local_weather",
+                    "description": "Get current weather conditions for a location",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "Location to get weather for (e.g., 'Cambridge, MA')"
+                            }
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "explore_web",
+                    "description": "Search the web for information and sources",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query for the web"
+                            }
+                        },
+                        "required": ["query"]
+                    }
                 }
             }
-        }]
+        ]
 
     def _call_llm(self,
                   messages: List[Dict],

@@ -201,6 +201,67 @@ class Crow(Character):
                         "required": ["location"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "analyze_temporal_patterns",
+                    "description": "Analyze temporal patterns in observational data including trends, seasonality, peak periods, environmental correlations, and predictions",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "data_type": {
+                                "type": "string",
+                                "description": "Type of data to analyze (e.g., 'bird_sightings', 'weather', 'behavior', 'air_quality', 'moon_phase', 'sun_times')"
+                            },
+                            "location": {
+                                "type": "string",
+                                "description": "Location to analyze patterns for (e.g., 'Tokyo, Japan')",
+                                "default": "global"
+                            },
+                            "days": {
+                                "type": "integer",
+                                "description": "Number of days to analyze",
+                                "default": 30
+                            }
+                        },
+                        "required": ["data_type"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "check_local_weather",
+                    "description": "Get current weather conditions for a location",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "Location to get weather for (e.g., 'Forest Park')"
+                            }
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "explore_web",
+                    "description": "Search the web for information and sources",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query for the web"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
             }
         ]
 

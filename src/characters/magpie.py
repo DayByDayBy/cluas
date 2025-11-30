@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 from groq import Groq
 from openai import OpenAI
 from src.cluas_mcp.web.explore_web import explore_web
-from src.cluas_mcp.web.trending import get_trends
-
+from src.cluas_mcp.web.trending import get_trends, explore_trend_angles
 from src.cluas_mcp.common.paper_memory import PaperMemory
 from src.cluas_mcp.common.observation_memory import ObservationMemory
 from src.cluas_mcp.common.trend_memory import TrendMemory
@@ -41,7 +40,8 @@ class Magpie(Character):
         self.tool_functions = {
             "explore_web": explore_web,
             "get_trends": get_trends,
-            "check_local_weather": check_local_weather
+            "check_local_weather": check_local_weather,
+            "explore_trend_angles": explore_trend_angles,
         }
         
         if provider_config is None:
@@ -67,8 +67,6 @@ class Magpie(Character):
     def get_system_prompt(self) -> str:
         recent_trends = self.trend_memory.get_recent(days=7) if hasattr(self, 'trend_memory') else None
         return magpie_system_prompt(location=self.location, recent_trends=recent_trends)
-
-
 
 
 
@@ -132,6 +130,34 @@ class Magpie(Character):
                         "required": []
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "explore_trend_angles",
+                    "description": "Deep dive on a trend: explore from multiple angles (why it's trending, cultural narrative, local context, criticism). Returns structured data for synthesis.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "topic": {
+                                "type": "string",
+                                "description": "Trend or topic to explore"
+                            },
+                            "location": {
+                                "type": "string",
+                                "description": "Optional location for local angle (e.g., 'Brooklyn', 'Tokyo')"
+                            },
+                            "depth": {
+                                "type": "string",
+                                "enum": ["light", "medium", "deep"],
+                                "description": "Exploration depth: light (quick), medium (standard), deep (thorough)",
+                                "default": "medium"
+                            }
+                        },
+                        "required": ["topic"]
+                    }
+                }
+            }
         ]
 
     def _call_llm(self,
@@ -261,6 +287,14 @@ class Magpie(Character):
                 if tool_func:
                     trending_results = await loop.run_in_executor(None, lambda: tool_func(category))
                     tool_result = self._format_trending_topics_for_llm(trending_results)
+            
+            elif tool_name == "explore_trend_angles":
+                topic = args.get("topic")
+                location_arg = args.get("location")
+                depth = args.get("depth", "medium")
+                if topic:
+                    angles_results = await explore_trend_angles(topic, location_arg, depth)
+                    tool_result = self._format_trend_angles_for_llm(angles_results)
             
             
             if tool_result:

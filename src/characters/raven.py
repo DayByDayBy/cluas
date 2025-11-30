@@ -149,6 +149,23 @@ class Raven(Character):
                         "required": ["category"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "check_local_weather",
+                    "description": "Get current weather conditions for a location",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "Location to get weather for (e.g., 'Washington, DC')"
+                            }
+                        },
+                        "required": []
+                    }
+                }
             }
         ]
 

@@ -22,7 +22,6 @@ short_description: A gathering of guides, a council of counsels
   <div class="corvid-banner-inner">
     <h1>CLUAS HUGINN</h1>
     <h2>A Multi-Agent Deliberation Engine</h2>
-</h2>
     <div class="corvid-banner-meta">Anno MMXXV — MCP 1st Birthday Hackathon Edition</div>
   </div>
 </div>
@@ -80,6 +79,7 @@ short_description: A gathering of guides, a council of counsels
 *A gathering of guides, a council of counsels*
 
 ## What It Does
+
 Four specialised AI agents with **distinct epistemic roles** debate questions using **structured dialectic**, building knowledge over time.
 
 - **Thesis**: Present findings with evidence  
@@ -95,18 +95,22 @@ Four specialised AI agents with **distinct epistemic roles** debate questions us
 - **Persistent memory**: Knowledge accumulates over time  
 - **Tool-personality mapping**: Raven verifies news, Corvus searches literature, etc.
 
-## The Council
-| Agent   | Role | Icon |
-|---------|------|------|
-| Corvus  | Academic verifier (literature) | 🐦‍⬛ |
-| Raven   | Accountability enforcer (news)  | 🦅 |
-| Magpie  | Trend explorer (patterns)       | 🪶 |
-| Crow    | Grounded observer (environment)  | 🕊️ |
 
 ### Modes
 
 - **Collaborative Mode**: Ask a question and receive synthesised research with sources  
-- **Active Mode**: Join the discussion, steer research, challenge claims
+- **Active Mode**: Join the discussion, steer research, challenge claims, be 'the human in the loop'
+
+
+## The Council
+| Agent   | Role | Icon |
+|---------|------|------|
+| Corvus  | Academic verifier (literature) | 🐦‍⬛ |
+| Raven   | Accountability enforcer (news, verification)  | 🦅 |
+| Magpie  | Trend explorer (patterns, connections)       | 🪶 |
+| Crow    | Grounded observer (data, environment)  | 🕊️ |
+
+
 
 ### Dialectic Process
 
@@ -117,7 +121,7 @@ Four specialised AI agents with **distinct epistemic roles** debate questions us
 
 ### Why It Matters
 
-Most AI assistants are stateless. cluas_huginn Council remembers, learns, and builds knowledge over time.
+Most AI assistants are stateless. cluas_huginn remembers, learns, and builds knowledge over time.
 
 ## 🛠 Tech Stack
 - **Base**: Python, Gradio  
@@ -132,24 +136,16 @@ Most AI assistants are stateless. cluas_huginn Council remembers, learns, and bu
 - "Research that remembers, knowledge that accumulates"  
 - "Multi-agent MCP research collective"
 
-## Architecture
-- **Corvus**: Academic verifier (literature search)
-- **Raven**: Accountability enforcer (news verification)
-- **Magpie**: Trend explorer (pattern connector)
-- **Crow**: Grounded observer (environmental data)
 
-## Key Innovations
+
+## Key Innovations / What Makes This Different
 1. Unified inheritance architecture
 2. Shared epistemic principles with "Four Temperament" character differentiation
-3. Tool-use heuristics per character
+3. Tool-use heuristics per character, guided by personality
 4. Steelmanning and collaborative disagreement built-in
+5. Structured dialectic reduces bias (thesis/antithesis/synthesis)
+6. Persistent memory: knowledge accumulates over time
 
-
-## What Makes This Different
-- Not just multiple LLMs - distinct epistemic roles
-- Structured dialectic (thesis/antithesis/synthesis)
-- Tool usage guided by character personality
-- Collaborative, not adversarial
 
 
 ---

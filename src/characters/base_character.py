@@ -20,6 +20,15 @@ class Character(ABC):
         self.provider_config = provider_config or {}
         self.delay = getattr(self, "delay", 1.0)
 
+    def _validate_api_key(self, key: str, expected_prefix: str) -> bool:
+        """Validate API key format and safety."""
+        if not key or len(key) < 20 or len(key) > 200:
+            return False
+        if not key.startswith(expected_prefix):
+            return False
+        # Only allow alphanumeric, dash, underscore
+        return all(c.isalnum() or c in '-_' for c in key)
+
     @abstractmethod
     async def respond(self, message: str, history: List[Dict], user_key: Optional[str] = None) -> str:
         """Return character response based on message and conversation history."""

@@ -128,12 +128,12 @@ def test_parse_mentions_function():
     # Test single mention
     message1 = "@corvus what do you think?"
     mentions1 = parse_mentions(message1)
-    assert mentions1 == ["corvus"], f"Single mention failed: {mentions1}"
+    assert mentions1 == ["Corvus"], f"Single mention failed: {mentions1}"
     
     # Test multiple mentions
     message2 = "@corvus and @raven, what are your opinions?"
     mentions2 = parse_mentions(message2)
-    assert set(mentions2) == {"corvus", "raven"}, f"Multiple mentions failed: {mentions2}"
+    assert set(mentions2) == {"Corvus", "Raven"}, f"Multiple mentions failed: {mentions2}"
     
     # Test no mentions
     message3 = "what does everyone think?"
@@ -143,7 +143,7 @@ def test_parse_mentions_function():
     # Test mention with punctuation
     message4 = "@corvus, what about tool use? @raven?"
     mentions4 = parse_mentions(message4)
-    assert set(mentions4) == {"corvus", "raven"}, f"Mentions with punctuation failed: {mentions4}"
+    assert set(mentions4) == {"Corvus", "Raven"}, f"Mentions with punctuation failed: {mentions4}"
     
     print("Parse mentions function tests passed")
 

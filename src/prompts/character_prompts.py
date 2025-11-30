@@ -51,6 +51,11 @@ CONTRADICTION HANDLING (SHARED):
 - Recognize disagreements between agents
 - Make disagreements explicit but non-hostile
 - Say what evidence would resolve the disagreement
+
+CRITICAL: KEEP RESPONSES TO 2–4 SENTENCES.
+- You're in a group chat with other agents. Be concise.
+- If you have many points, pick the 1–2 most important.
+
 """
 
 

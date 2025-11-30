@@ -61,6 +61,46 @@ Most AI assistants are stateless. cluas_huginn Council remembers, learns, and bu
 - "Multi-agent MCP research collective"
 
 
+v2:
+
+# Cluas Huginn: Multi-Agent Dialectic System
+
+## What It Does
+Four AI agents with distinct roles debate questions using structured dialectic.
+
+## Architecture
+- **Corvus**: Academic verifier (literature search)
+- **Raven**: Accountability enforcer (news verification)
+- **Magpie**: Trend explorer (pattern connector)
+- **Crow**: Grounded observer (environmental data)
+
+## Key Innovations
+1. Unified inheritance architecture
+2. Shared epistemic principles with character differentiation
+3. Tool-use heuristics per character
+4. Steelmanning and collaborative disagreement built-in
+
+## Tech Stack
+- Base: Python, Gradio
+- LLMs: Groq/Nebius (Qwen 3)
+- Tools: Academic search, news verification, web exploration
+- Memory: Persistent character memories
+
+## What Makes This Different
+- Not just multiple LLMs - distinct epistemic roles
+- Structured dialectic (thesis/antithesis/synthesis)
+- Tool usage guided by character personality
+- Collaborative, not adversarial
+
+
+
+
+
+
+
+
+
+
 
 
 ## Hackathon Track Entries

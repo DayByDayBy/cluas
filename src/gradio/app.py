@@ -563,16 +563,28 @@ def format_deliberation_html(entries: list | dict) -> str:
     html_parts.append('</div>')
     return ''.join(html_parts)
 
-# Theme configuration
-theme = gr.themes.Soft(
-    primary_hue=gr.themes.colors.indigo,
-    secondary_hue=gr.themes.colors.slate,
-    neutral_hue=gr.themes.colors.gray,
-    font=None,
-    font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "monospace"],
-    radius_size=gr.themes.sizes.radius_md,
-    spacing_size=gr.themes.sizes.spacing_md,
-    text_size=gr.themes.sizes.text_md,
+# # Theme configuration
+# theme = gr.themes.Soft(
+#     primary_hue=None,
+#     secondary_hue=None,
+#     neutral_hue=None,
+#     font=None,
+#     font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "monospace"],
+#     radius_size=None,
+#     spacing_size=None,
+#     text_size=None,
+# )
+
+
+theme = gr.themes.Base(
+    primary_hue=None,
+    secondary_hue=None,
+    neutral_hue=None,
+    font=None,           # Let CSS handle fonts
+    font_mono=None,      # CSS handles monospace fonts
+    radius_size=None,    # CSS handles border-radius
+    spacing_size=None,   # CSS handles spacing
+    text_size=None,      # CSS handles text size
 )
 
 # Create Gradio interface
@@ -736,4 +748,4 @@ if __name__ == "__main__":
     demo.load(js="window.loading_status = window.loading_status || {};")
     
     demo.queue()
-    demo.launch(theme=theme, css=CUSTOM_CSS)
+    demo.launch(theme=None, css=CUSTOM_CSS)

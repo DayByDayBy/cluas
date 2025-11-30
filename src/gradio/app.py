@@ -4,7 +4,6 @@ import logging
 import asyncio
 import html
 import random
-import re
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
@@ -12,6 +11,7 @@ from src.characters.corvus import Corvus
 from src.characters.magpie import Magpie
 from src.characters.raven import Raven
 from src.characters.crow import Crow
+from src.characters.neutral_moderator import Moderator
 from src.characters.base_character import Character
 from src.characters.registry import register_instance, get_all_characters, REGISTRY
 from src.gradio.types import BaseMessage, UIMessage, to_llm_history, from_gradio_format
@@ -24,6 +24,7 @@ corvus = Corvus()
 magpie = Magpie()
 raven = Raven()
 crow = Crow()
+moderator_instance = Moderator()  # always available
 
 # register them
 register_instance(corvus)
@@ -210,12 +211,12 @@ def _history_text(history: List[str], limit: int = 13) -> str:
     return "\n".join(history[-limit:])
 
 
-async def _neutral_summary(history_text: str, moderator: Character = None) -> str:
+async def _neutral_summary(history_text: str, moderator: Character = moderator_instance) -> str:
     if not history_text.strip():
         return "No discussion to summarize."
     prompt = (
-        "You are the neutral moderator. "
-        "Summarize the key points, agreements, and disagreements succinctly.\n\n"
+        "You are the moderator. "
+        "Summarize the key points, agreements, and disagreements succinctly..\n\n"
         f"TRANSCRIPT:\n{history_text}"
     )
     return await get_character_response(moderator, prompt, [])
@@ -367,13 +368,13 @@ async def deliberate(
         name_map = {char.name.lower(): char for char in CHARACTERS}
         selected = name_map.get(summariser_normalized)
         if not selected:
-            raise ValueError(f"Unknown summariser '{summariser}'. Choose moderator or one of: {', '.join(order_names)}.")
+            selected = moderator_instance  # fallback just in case
         summary_prompt = (
             "Provide a concise synthesis (3 sentences max) from your perspective, referencing the discussion below.\n\n"
             f"{full_history_text}"
         )
         final_summary = await get_character_response(selected, summary_prompt, [])
-        summary_author = summariser.title()
+        summary_author = selected.name
 
     history_output: List[Any]
     if format == "chat":
@@ -477,7 +478,7 @@ def format_deliberation_html(entries: list | dict) -> str:
     
     html_parts = ['<div class="deliberation-container">']
     
-    for entry in entries:
+    for entry in entries:#
         phase = entry.get("phase", "unknown").lower()
         cycle = entry.get("cycle", 0)
         name = entry.get("name", "unknown")

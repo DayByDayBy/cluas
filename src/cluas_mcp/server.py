@@ -12,7 +12,7 @@ from src.cluas_mcp.web.trending import get_trends, explore_trend_angles
 from src.cluas_mcp.news.news_search_entrypoint import verify_news
 from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
 from src.cluas_mcp.common.check_local_weather import check_local_weather_sync
-from src.cluas_mcp.formatters import (
+from .formatters import (
     format_bird_sightings, 
     format_news_results, 
     format_local_weather, 

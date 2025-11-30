@@ -2,17 +2,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug app.py",
-      "type": "python",
+      "name": "Debug app.py as module",
+      "type": "debugpy",
       "request": "launch",
       "module": "src.gradio.app",
-      "program": "${workspaceFolder}/src/gradio/app.py",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
     }
-],
-"python-envs.pythonProjects": []
+  ]
 }

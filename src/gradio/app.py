@@ -4,6 +4,7 @@ import logging
 import asyncio
 import html
 import random
+import re
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
@@ -15,9 +16,22 @@ from src.characters.neutral_moderator import Moderator
 from src.characters.base_character import Character
 from src.characters.registry import register_instance, get_all_characters, REGISTRY
 from src.gradio.types import BaseMessage, UIMessage, to_llm_history, from_gradio_format
+from gradio.themes import Monochrome
+
 
 
 logger = logging.getLogger(__name__)
+
+# Tool call sanitization
+TOOL_CALL_PATTERN = re.compile(r"function=(\w+)>(.*?)</function>", re.DOTALL)
+
+def sanitize_tool_calls(text: str) -> str:
+    """Replace raw tool call markup with readable format."""
+    def _replace(match):
+        func = match.group(1)
+        payload = match.group(2)
+        return f"*Tool call · {func} {payload}*"
+    return TOOL_CALL_PATTERN.sub(_replace, text)
 
 # instantiate characters (as you already do)
 corvus = Corvus()
@@ -49,30 +63,61 @@ PHASE_INSTRUCTIONS = {
 CSS_PATH = Path(__file__).parent / "styles.css"
 CUSTOM_CSS = CSS_PATH.read_text() if CSS_PATH.exists() else ""
 
-def render_chat_html(history: list) -> str:
+
+theme = Monochrome(
+    font=["Söhne", "sans-serif"],
+    font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "monospace"],
+    text_size="lg",
+    primary_hue="blue",
+    secondary_hue="blue",
+    radius_size="lg",
+)
+
+theme.set(
+    body_background_fill="#f5f4ef",
+    block_background_fill="#ffffffd8",
+)
+
+
+
+def render_chat_html(history: List[Dict]) -> str:
+    """Render chat history to HTML (supports streaming)."""
     html_parts = []
     
-    for msg in history:
-        if msg.speaker == "user":
+    for message in history:
+        role = message.get("role", "")
+        content = message.get("content", "")
+        name = message.get("name", "")
+        emoji = message.get("emoji", "")
+        is_typing = message.get("typing", False)
+        is_streaming = message.get("streaming", False)
+        
+        if role == "user":
             html_parts.append(f'''
-                    <div class="chat-message user">
-                        <div class="chat-avatar"><img src="avatars/user.png"></div>
-                        <div class="chat-content">
-                            <div class="chat-bubble">{html.escape(msg.content)}</div>
-                        </div>
+                <div class="chat-message user">
+                    <div class="chat-content">
+                        <div class="chat-bubble">{html.escape(content)}</div>
                     </div>
-                ''')
-        else:
+                </div>
+            ''')
+        elif role == "assistant":
+            css_class = f"chat-message {name.lower()}"
+            if is_typing:
+                css_class += " typing"
+            elif is_streaming:
+                css_class += " streaming"
+            
             html_parts.append(f'''
-                    <div class="chat-message {msg.speaker.lower()}">
-                        <div class="chat-avatar"><img src="avatars/{msg.speaker.lower()}.png"></div>
-                        <div class="chat-content">
-                            <div class="chat-name">{msg.emoji} {msg.speaker}</div>
-                            <div class="chat-bubble">{html.escape(msg.content)}</div>
-                        </div>
+                <div class="{css_class}">
+                    <div class="chat-avatar">{emoji}</div>
+                    <div class="chat-content">
+                        <div class="chat-name">{name}</div>
+                        <div class="chat-bubble">{html.escape(content)}</div>
                     </div>
-                ''')    
-    return "\n".join(html_parts)
+                </div>
+            ''')
+    
+    return ''.join(html_parts)
 
 
 
@@ -93,18 +138,46 @@ def parse_mentions(message: str) -> list[str] | None:
 def format_message(character: Character, message: str) -> Tuple[str, str]:
     """Format message with character name and emoji"""
     emoji = getattr(character, "emoji", "💬")
-    color = getattr(character, "color", "#FFFFFF")
+    color = getattr(character, "color", "#121314")
     name = getattr(character, "name", "counsel") 
     
     formatted = f'{emoji} <span style="color:{color}; font-weight:bold;">{name}</span>: {message}'
     
     return formatted, name
 
+async def get_character_response_stream(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None):
+    """Stream character response in real-time chunks."""
+    try:
+        logger.debug(f"Streaming {char.name}.respond() with message: {message[:50]}...")
+        
+        # Get the streaming response from character
+        async for chunk in char.respond_stream(message, llm_history, user_key=user_key):
+            if chunk:
+                logger.debug(f"{char.name} streaming chunk: {chunk[:50]}...")
+                yield chunk
+        
+        logger.debug(f"{char.name} stream completed")
+        
+    except Exception as e:
+        logger.error(f"{char.name} streaming error: {str(e)}")
+        # Fallback response
+        error_messages = {
+            "Corvus": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought...",
+            "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
+            "Raven": "Connection acting up again. Typical.",
+            "Crow": "*silent, gazing into the distance*"
+        }
+        fallback = error_messages.get(char.name, f"*{char.name} seems distracted*")
+        yield fallback
+
 async def get_character_response(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None) -> str:
     """Get response from a character; uses pre-formatted llm_history"""
     try:
         logger.debug(f"Calling {char.name}.respond() with message: {message[:50]}...")
-        response = await char.respond(message, llm_history, user_key=user_key)
+        full_response = ""
+        async for chunk in get_character_response_stream(char, message, llm_history, user_key):
+            full_response += chunk
+        response = full_response
         logger.debug(f"{char.name} responded with: {response[:100] if response else '<EMPTY>'}")
         
         if not response or not response.strip():
@@ -135,65 +208,98 @@ async def get_character_response(char: Character, message: str, llm_history: Lis
         
 
 
-async def chat_fn(message: str, history: list, user_key: Optional[str] = None):
-    """async chat handler, using dataclasses internally"""
-    if not message.strip():
+async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] = None):
+    """Streaming chat function - yields updates in real-time."""
+    if not msg or not msg.strip():
         yield history
         return
     
     internal_history = [from_gradio_format(msg) for msg in history]
+    internal_history.append(BaseMessage(role="user", speaker="user", content=msg))
     
-    user_msg = BaseMessage(role="user", speaker="user", content=message)
-    internal_history.append(user_msg)
+    # Parse mentions
+    mentioned_names = parse_mentions(msg)
+    if not mentioned_names:
+        mentioned_names = [char.name for char in CHARACTERS]
     
-    history.append(user_msg.to_gradio_format())
-    yield history
+    # Get mentioned characters (case insensitive)
+    mentioned = []
+    for name in mentioned_names:
+        char = REGISTRY.get(name.lower())
+        if char:
+            mentioned.append(char)
+        else:
+            logger.warning(f"Character '{name}' not found in registry")
     
-    mentioned_chars = parse_mentions(message)
+    if not mentioned:
+        yield render_chat_html(history)
+        return 
     
-    for char in CHARACTERS:
-        if mentioned_chars and char.name not in mentioned_chars:
-            continue
-        
-        # typing indicator
-        for i in range(4):
-            dots = "." * i
-            typing_msg = UIMessage.from_character(char, f"{dots}", len(internal_history))
-
-            if i == 0:
-                history.append(typing_msg.to_gradio_format())
-            else:
-                history[-1] = typing_msg.to_gradio_format()
-            yield history
-            await asyncio.sleep(0.25)
-        
+    # Add typing indicators
+    for char in mentioned:
+        history.append({
+            "role": "assistant",
+            "content": f"*{char.name} is thinking...*",
+            "name": char.name,
+            "emoji": char.emoji,
+            "typing": True
+        })
+    
+    yield render_chat_html(history)  # Show typing indicators
+    
+    # Remove typing indicators and add responses
+    history.pop()  # Remove last typing indicator
+    
+    for char in mentioned:
         try:
             llm_history = to_llm_history(internal_history[-5:])
-            response = await get_character_response(char, message, llm_history, user_key=user_key)
+            await asyncio.sleep(0.5)  # Rate limiting delay
             
-            history.pop()  # removes typing indicator
+            # Stream response
+            response = ""
+            async for chunk in get_character_response_stream(char, msg, llm_history, user_key):
+                response += chunk
+                # Update with partial response
+                history.append({
+                    "role": "assistant", 
+                    "content": response,
+                    "name": char.name,
+                    "emoji": char.emoji,
+                    "streaming": True
+                })
+                yield render_chat_html(history)
+                history.pop()  # Remove for next update
             
-            ui_msg = UIMessage.from_character(char, response, len(internal_history))
-            internal_history.append(ui_msg)
-        
+            # Sanitize and final response
+            sanitized_response = sanitize_tool_calls(response)
+            history.append({
+                "role": "assistant",
+                "content": sanitized_response,
+                "name": char.name,
+                "emoji": char.emoji
+            })
+            internal_history.append(BaseMessage(role="assistant", speaker=char.name, content=sanitized_response))
             
-            formatted, _ = format_message(char, response)
-            
-            display_msg = BaseMessage(
-                role="assistant",
-                speaker=char.name.lower(),
-                content=formatted
-                )
-            
-            history.append(display_msg.to_gradio_format())
-            yield history
-            await asyncio.sleep(getattr(char, "delay", 1.0))
         except Exception as e:
-            logger.error(f"{char.name} error: {e}")    
-            history.pop()
-            yield history
-            
-        
+            logger.error(f"Error in chat_fn_stream for {char.name}: {e}")
+            history.append({
+                "role": "assistant",
+                "content": f"*{char.name} seems distracted*",
+                "name": char.name,
+                "emoji": char.emoji
+            })
+    
+    yield render_chat_html(history)  # Final result
+
+
+async def chat_fn(msg: str, history: List[Dict], user_key: Optional[str] = None) -> str:
+    """Non-streaming chat function that returns HTML."""
+    result = []
+    async for html_update in chat_fn_stream(msg, history, user_key):
+        result.append(html_update)
+    return result[-1] if result else render_chat_html(history)
+
+
 
 def _phase_instruction(phase: str) -> str:
     return PHASE_INSTRUCTIONS.get(phase, "")
@@ -275,7 +381,7 @@ async def deliberate(
     user_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Run a dialectic deliberation (thesis → antithesis → synthesis) with the Corvid Council.
+    Run a dialectic deliberation (thesis → antithesis → synthesis) with the council.
 
     Args:
         question: Topic to deliberate on.
@@ -336,7 +442,7 @@ async def deliberate(
                 logger.error("Phase %s: %s failed (%s)", phase, name, response)
                 text = f"*{name} could not respond.*"
             else:
-                text = response.strip()
+                text = sanitize_tool_calls(response.strip())
                 logger.debug("Phase %s: %s response: '%s'", phase, name, text[:100] if text else "<EMPTY>")
 
             conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
@@ -351,9 +457,9 @@ async def deliberate(
             entry = {
                 "cycle": cycle_idx + 1,
                 "phase": phase,
-                "name": char.name,
+                "name": char_obj.name,
                 "content": text,
-                "char": char, 
+                "char": char_obj, 
                 "prompt": prompt,
             }
             
@@ -569,7 +675,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
 
     # Branding / tagline
     gr.Markdown("""
-    <div style="text-align:center; color:#ccc;">
+    <div style="text-align:center; color:#806565;">
         <h1>cluas huginn</h1>
         <p><i>a gathering of guides, a council of counsels</i></p>
         <p>chat with a council of four corvid-obsessed agents</p>
@@ -607,7 +713,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
             
             # API Key input (separated with spacing)
             gr.HTML("<div style='margin-top: 20px;'></div>")  # Spacer
-            with gr.Column(scale=1, max_width=300):
+            with gr.Column(scale=2, min_width=300):
                 user_key = gr.Textbox(
                     label="API Key (Optional)",
                     placeholder="OpenAI (sk-...), Anthropic (sk-ant-...), or HF (hf_...)",
@@ -615,13 +721,11 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                     container=True,
                 )
 
-            # Handle submit
-            msg.submit(chat_fn, [msg, chat_state, user_key], [chat_state], queue=True)\
-                .then(render_chat_html, [chat_state], [chat_html])\
+            # Handle submit with streaming
+            msg.submit(chat_fn, [msg, chat_state, user_key], [chat_html], queue=True)\
                 .then(lambda: "", None, [msg])
 
-            submit_btn.click(chat_fn, [msg, chat_state, user_key], [chat_state], queue=True)\
-                .then(render_chat_html, [chat_state], [chat_html])\
+            submit_btn.click(chat_fn, [msg, chat_state, user_key], [chat_html], queue=True)\
                 .then(lambda: "", None, [msg])
                 
         # TAB 2: Deliberation mode
@@ -662,7 +766,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                     info="Who provides the final synthesis?"
                 )
 
-            deliberate_btn = gr.Button("🎯 Deliberate", variant="primary", scale=1, elem_id="deliberate-btn")
+            deliberate_btn = gr.Button("Deliberate", variant="primary", scale=1, elem_id="deliberate-btn")
             deliberation_output = gr.HTML(label="Deliberation Output")
 
             download_btn = gr.DownloadButton(
@@ -681,7 +785,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
 
     gr.Markdown("""
     ### About
-    The Corvid Council is a multi-agent system where four specialized AI characters collaborate to answer questions.
+    Cluas Huginn is a multi-agent system where four specialized AI characters collaborate to answer questions.
     Each character brings unique perspective and expertise to enrich the discussion.
     
     **Chat Mode:** Direct conversation with the council.
@@ -720,4 +824,4 @@ if __name__ == "__main__":
     demo.load(js="window.loading_status = window.loading_status || {};")
     
     demo.queue()
-    demo.launch(css=CUSTOM_CSS)
+    demo.launch(theme=theme, css=CUSTOM_CSS)

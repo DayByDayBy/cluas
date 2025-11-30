@@ -18,23 +18,23 @@ short_description: A gathering of guides, a council of counsels
 ## - A Multi-Agent Research Council
 
 
-<div class="corvid-banner">
-  <div class="corvid-banner-inner">
+<div class="cluas-banner">
+  <div class="cluas-banner-inner">
     <h1>CLUAS HUGINN</h1>
     <h2>A Multi-Agent Deliberation Engine</h2>
-    <div class="corvid-banner-meta">Anno MMXXV — MCP 1st Birthday Hackathon Edition</div>
+    <div class="cluas-banner-meta">Anno MMXXV — MCP 1st Birthday Hackathon Edition</div>
   </div>
 </div>
 
 <style>
-.corvid-banner {
+.cluas-banner {
     width: 100%;
     display: flex;
     justify-content: center;
     margin: 24px 0 32px;
 }
 
-.corvid-banner-inner {
+.cluas-banner-inner {
     background: #f5f4ef url('/file=static/paper.png') repeat;
     background-size: 300px;
     border: 2px solid rgba(139, 88, 40, 0.55); /* copper ink */
@@ -49,12 +49,12 @@ short_description: A gathering of guides, a council of counsels
         0 6px 12px rgba(0,0,0,0.04);
 }
 
-.corvid-banner-inner h1, .corvid-banner-inner h2 {
+.cluas-banner-inner h1, .cluas-banner-inner h2 {
     text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 /* Title */
-.corvid-banner-inner h1 {
+.cluas-banner-inner h1 {
     font-size: 1.9rem;
     margin: 0;
     color: #4a3524; /* ink brown */
@@ -63,7 +63,7 @@ short_description: A gathering of guides, a council of counsels
 }
 
 /* Subtitle */
-.corvid-banner-inner h2 {
+.cluas-banner-inner h2 {
     font-size: 1.05rem;
     margin: 6px 0 10px;
     font-weight: 500;
@@ -72,7 +72,7 @@ short_description: A gathering of guides, a council of counsels
 }
 
 /* Meta line */
-.corvid-banner-meta {
+.cluas-banner-meta {
     font-size: 0.9rem;
     color: rgba(70, 50, 35, 0.75);
     font-style: italic;

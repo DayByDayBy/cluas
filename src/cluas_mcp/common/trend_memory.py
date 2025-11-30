@@ -251,33 +251,3 @@ class TrendMemory:
         """Clear all entries (use with caution!)."""
         self.memory = {}
         self._write_memory({})
-
-
-# Usage example:
-# from src.cluas_mcp.common.trend_memory import TrendMemory
-#
-# memory = TrendMemory(location="Brooklyn")
-#
-# # Add a web search
-# memory.add_search(
-#     query="corvid intelligence research",
-#     results={"items": [...], "total_results": 150},
-#     search_type="web_search",
-#     tags=["research", "morning"],
-#     notes="Triggered by: user question about crow cognition"
-# )
-#
-# # Add a trending topic
-# memory.add_trend(
-#     topic="AI safety regulations",
-#     trend_data={"rank": 3, "volume": "high", "related": [...]},
-#     tags=["tech", "policy"],
-#     notes="Spotted on Twitter trends"
-# )
-#
-# # Check search history
-# previous = memory.search_history("corvid", days=30)
-# print(f"Found {len(previous)} previous searches for 'corvid'")
-#
-# # Get recent entries
-# recent = memory.get_recent(days=7)

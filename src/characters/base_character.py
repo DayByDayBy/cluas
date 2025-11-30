@@ -33,3 +33,9 @@ class Character(ABC):
     async def respond(self, message: str, history: List[Dict], user_key: Optional[str] = None) -> str:
         """Return character response based on message and conversation history."""
         pass
+    
+    async def respond_stream(self, message: str, history: List[Dict], user_key: Optional[str] = None):
+        """Stream character response in chunks (fallback to full response)."""
+        # Default implementation: get full response and yield it
+        full_response = await self.respond(message, history, user_key)
+        yield full_response

@@ -47,7 +47,7 @@ class Raven(Character):
                 "primary": "nebius",
                 "fallback": ["groq"],
                 "models": {
-                    "nebius": "Qwen3-235B-A22B-Instruct-2507",
+                    "nebius": "meta-llama/Llama-3.3-70B-Instruct",
                     "groq": "llama-3.1-8b-instant"
                 },
                 "timeout": 30,

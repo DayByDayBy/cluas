@@ -29,7 +29,7 @@ class Moderator(Character):
                 "primary": "nebius",
                 "fallback": ["groq"],
                 "models": {
-                    "nebius": "Qwen3-30B-A3B-Instruct-2507",  # Quality 85, cost-effective for summaries
+                    "nebius": "meta-llama/Meta-Llama-3.1-8B-Instruct",  # Cost-effective for summaries
                     "groq": "llama-3.1-8b-instant"  # Fallback
                 },
                 "timeout": 30,

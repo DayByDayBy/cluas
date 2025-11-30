@@ -1,5 +1,5 @@
 # src/characters — Purpose
-Contains the four corvid persona definitions.
+Contains the four persona definitions.
 
 # Important files
 - corvus.py

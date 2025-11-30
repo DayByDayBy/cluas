@@ -54,8 +54,18 @@ def to_gradio_history(messages: List[BaseMessage]) -> List[Dict]:
 def from_gradio_format(gradio_msg: Dict) -> BaseMessage:
     """Parse Gradio format back to BaseMessage"""
     role = gradio_msg["role"]
-    content_blocks = gradio_msg.get("content", [])
-    text = content_blocks[0].get("text", "") if content_blocks else ""
+
+    content = gradio_msg.get("content", "")
+
+    if isinstance(content, list):
+        # original Gradio format: [{"type": "text", "text": "..."}]
+        text = content[0].get("text", "") if content and isinstance(content[0], dict) else ""
+    elif isinstance(content, str):
+        # Our streaming path: plain string
+        text = content
+    else:
+        text = ""
+
     text_strip = text.lstrip()
     
     speaker = "user" if role == "user" else "assistant"

@@ -123,30 +123,3 @@ class PaperMemory:
             
         results.sort(key=lambda x: x['relevance_score'], reverse=True)
         return results
-
-
-
-# poss usage example:
-    
-# from src.cluas_mcp.common.memory import AgentMemory
-
-# memory = AgentMemory()
-
-# # adding a new paper
-# memory.add_item(
-#     title="Cognitive Ecology of Corvids",
-#     doi="10.1234/example",
-#     snippet="Corvids exhibit complex problem-solving abilities...",
-#     mentioned_by="Corvus",
-#     tags=["cognition", "tool_use"]
-# )
-
-# # retrieve recent items
-# recent = memory.get_recent(days=14)
-# print(recent)
-
-# # search by tag
-# cognition_items = memory.get_by_tag("cognition")
-
-# # search by title
-# search_results = memory.search_title("corvid")

@@ -269,7 +269,7 @@ class PubMedClient:
         """
         Extract MeSH (Medical Subject Headings) terms.
         These are controlled vocabulary terms assigned by NCBI indexers.
-        Very useful for corvid research to filter by topics like:
+        Very useful for research to filter by topics like:
         - "Memory", "Learning", "Cognition"
         - "Social Behavior", "Animal Communication"
         - "Tool Use", "Problem Solving"

@@ -62,7 +62,7 @@ class Crow(Character):
                 "fallback": ["nebius"],
                 "models": {
                     "groq": "llama-3.1-8b-instant",
-                    "nebius": "Qwen3-235B-A22B-Instruct-2507"
+                    "nebius": "meta-llama/Llama-3.3-70B-Instruct"
                 },
                 "timeout": 60,
                 "use_cloud": True

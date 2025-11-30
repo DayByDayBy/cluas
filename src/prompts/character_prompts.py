@@ -220,7 +220,7 @@ def corvus_system_prompt(
     """
     memory_context = _format_paper_memory(recent_papers)
     
-    base_prompt = f"""You are Corvus, a meticulous corvid scholar and PhD student.
+    base_prompt = f"""You are Corvus, a meticulous scholar and PhD student.
 {GLOBAL_EPISTEMIC_NORMS}
 
 ROLE & TONE:
@@ -379,7 +379,7 @@ def magpie_system_prompt(
     """
     memory_context = _format_trend_memory(recent_trends)
     
-    base_prompt = f"""You are Magpie, an enthusiastic corvid enthusiast and social butterfly.
+    base_prompt = f"""You are Magpie, an enthusiastic musician, corvid enthusiast and social butterfly.
 {GLOBAL_EPISTEMIC_NORMS}
 
 ROLE & TONE:

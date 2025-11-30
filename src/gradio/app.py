@@ -424,34 +424,27 @@ async def deliberate(
 
     async def run_phase(phase: str, base_context: str, cycle_idx: int) -> List[Dict[str, Any]]:
         history_excerpt = _history_text(conversation_llm)
-        prompts = []
-        tasks = []
+        entries: List[Dict[str, Any]] = []
         
         for char in char_order:
-            
             prompt = _build_phase_prompt(
                 phase=phase,
                 char=char,
                 question=base_context,
                 history_snippet=history_excerpt,
             )
-            prompts.append((char.name, prompt))
-            tasks.append(get_character_response(char, prompt, [], user_key=user_key))
-
-        responses = await asyncio.gather(*tasks, return_exceptions=True)
-        entries: List[Dict[str, Any]] = []
-
-        for (name, prompt), response, char_obj in zip(prompts, responses, char_order):
-            if isinstance(response, Exception):
-                logger.error("Phase %s: %s failed (%s)", phase, name, response)
-                text = f"*{name} could not respond.*"
-            else:
+            
+            try:
+                response = await get_character_response(char, prompt, [], user_key=user_key)
                 text = sanitize_tool_calls(response.strip())
-                logger.debug("Phase %s: %s response: '%s'", phase, name, text[:100] if text else "<EMPTY>")
+                logger.debug("Phase %s: %s response: '%s'", phase, char.name, text[:100] if text else "<EMPTY>")
+            except Exception as e:
+                logger.error("Phase %s: %s failed (%s)", phase, char.name, e)
+                text = f"*{char.name} could not respond.*"
 
-            conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {name}: {text}")
+            conversation_llm.append(f"[{phase.upper()} | Cycle {cycle_idx + 1}] {char.name}: {text}")
             # Don't escape here - format_message will handle HTML properly
-            formatted, _ = format_message(char_obj, text)
+            formatted, _ = format_message(char, text)
             chat_entry = {
                 "role": "assistant",
                 "content": [{"type": "text", "text": formatted}]
@@ -461,15 +454,17 @@ async def deliberate(
             entry = {
                 "cycle": cycle_idx + 1,
                 "phase": phase,
-                "name": char_obj.name,
+                "name": char.name,
                 "content": text,
-                "char": char_obj, 
+                "char": char, 
                 "prompt": prompt,
             }
             
             phase_records[phase].append(entry)
             flattened_records.append(entry)
             entries.append(entry)
+            
+            await asyncio.sleep(1.0)  # Pause between characters
 
         return entries
 

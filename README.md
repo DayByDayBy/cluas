@@ -14,9 +14,9 @@ short_description: A gathering of guides, a council of counsels
 
 <div class="corvid-banner">
   <div class="corvid-banner-inner">
-    <h1>The Corvidian Council</h1>
+    <h1>CLUAS HUGINN</h1>
     <h2>A Multi-Agent Deliberation Engine</h2>
-    <div class="corvid-banner-meta">Anno MMXXV — Hackathon Edition</div>
+    <div class="corvid-banner-meta">Anno MMXXV — MCP 1st Birthday Hackathon Edition</div>
   </div>
 </div>
 
@@ -30,7 +30,7 @@ short_description: A gathering of guides, a council of counsels
 
 .corvid-banner-inner {
     background: #f5f4ef url('/file=static/paper.png') repeat;
-    background-size: 200px;
+    background-size: 300px;
     border: 2px solid rgba(139, 88, 40, 0.55); /* copper ink */
     padding: 24px 32px;
     border-radius: 12px;

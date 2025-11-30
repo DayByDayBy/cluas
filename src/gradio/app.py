@@ -238,10 +238,7 @@ async def _summarize_cycle(history_text: str, moderator: Character = None, user_
     )
     return await get_character_response(moderator, prompt, [], user_key=user_key)
 
-#  messaage format translators:
 
-def to_llm_history(history: list[BaseMessage]) -> list[dict]:
-    return [{"role": m.role, "content": m.content} for m in history]
 
 def to_html(message: UIMessage) -> str:
     return f"""
@@ -369,19 +366,28 @@ async def deliberate(
     summariser_normalized = summariser.strip().lower()
 
     if summariser_normalized == "moderator":
+        logger.info("Using moderator for final summary")
         final_summary = await _neutral_summary(full_history_text, user_key=user_key)
         summary_author = "Moderator"
     else:
         name_map = {char.name.lower(): char for char in CHARACTERS}
         selected = name_map.get(summariser_normalized)
         if not selected:
-            selected = moderator_instance  # fallback just in case
+            logger.warning(f"Summariser '{summariser}' not found in characters; falling back to moderator")
+            selected = moderator_instance
+            summary_author = "Moderator"
+        else:
+            logger.info(f"Using {selected.name} for final summary")
+            summary_author = summariser.title()
+        
+        if selected is None:
+            raise RuntimeError(f"Failed to resolve summariser: '{summariser}' and moderator unavailable")
+        
         summary_prompt = (
             "Provide a concise synthesis (3 sentences max) from your perspective, referencing the discussion below.\n\n"
             f"{full_history_text}"
         )
         final_summary = await get_character_response(selected, summary_prompt, [], user_key=user_key)
-        summary_author = summariser.title()
 
     history_output: List[Any]
     if format == "chat":

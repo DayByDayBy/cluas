@@ -748,4 +748,4 @@ if __name__ == "__main__":
     demo.load(js="window.loading_status = window.loading_status || {};")
     
     demo.queue()
-    demo.launch(theme=None, css=CUSTOM_CSS)
+    demo.launch(css=CUSTOM_CSS)

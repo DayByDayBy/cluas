@@ -57,6 +57,7 @@ button:hover {
 /* CHAT LAYOUT */
 #chat-container {
     max-width: 720px;
+    max-height: 600px;
     margin: 0 auto;
     padding: 16px;
     overflow-y: auto;
@@ -78,9 +79,9 @@ button:hover {
 
 /* Avatar */
 .chat-avatar {
+    border-radius: 50%;
     width: 40px;
     height: 40px;
-    border-radius: 50%;
     object-fit: cover;
 }
 
@@ -123,7 +124,7 @@ button:hover {
 .chat-message.corvus .chat-bubble { border-left: 3px solid var(--corvus-accent); }
 .chat-message.magpie .chat-bubble { border-left: 3px solid var(--magpie-accent); }
 .chat-message.raven  .chat-bubble { border-left: 3px solid var(--raven-accent); }
-chat-message.crow    .chat-bubble { border-left: 3px solid var(--crow-accent); }
+.chat-message.crow    .chat-bubble { border-left: 3px solid var(--crow-accent); }
 
 .chat-message.assistant .chat-name { color: #666; }
 

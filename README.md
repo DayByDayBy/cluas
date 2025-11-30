@@ -49,6 +49,10 @@ short_description: A gathering of guides, a council of counsels
         0 6px 12px rgba(0,0,0,0.04);
 }
 
+.corvid-banner-inner h1, .corvid-banner-inner h2 {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
 /* Title */
 .corvid-banner-inner h1 {
     font-size: 1.9rem;
@@ -89,11 +93,15 @@ Four specialised AI agents with **distinct epistemic roles** debate questions us
 - **Evolution**: Future discussions build on accumulated knowledge
 
 
-##  Why It's Different
-- **Distinct epistemic roles**: Each agent uses specialized tools  
-- **Structured dialectic**: Reduces bias, promotes steelmanning  
-- **Persistent memory**: Knowledge accumulates over time  
-- **Tool-personality mapping**: Raven verifies news, Corvus searches literature, etc.
+
+## Key Innovations / What Makes This Different
+1. **Unified inheritance** architecture underpinning multi-agent system
+2. **Shared epistemic principles** but **distinct epistemic roles** for each agent
+3. **"Four Temperament"** character differentiation
+4. **Tool-use heuristics per character**, guided by each character’s personality
+5. **Steelmanning** and **collaborative disagreement** built-in
+6. **Structured dialectic** (thesis → antithesis → synthesis) to reduce bias
+7. **Persistent memory** enabling knowledge accumulation over time
 
 
 ### Modes
@@ -138,13 +146,6 @@ Most AI assistants are stateless. cluas_huginn remembers, learns, and builds kno
 
 
 
-## Key Innovations / What Makes This Different
-1. Unified inheritance architecture
-2. Shared epistemic principles with "Four Temperament" character differentiation
-3. Tool-use heuristics per character, guided by personality
-4. Steelmanning and collaborative disagreement built-in
-5. Structured dialectic reduces bias (thesis/antithesis/synthesis)
-6. Persistent memory: knowledge accumulates over time
 
 
 

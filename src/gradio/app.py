@@ -583,7 +583,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
     <div style="text-align:center; color:#ccc;">
         <h1>cluas huginn</h1>
         <p><i>a gathering of guides, a council of counsels</i></p>
-        <p>Chat with a council of four corvid-obsessed agents</p>
+        <p>chat with a council of four corvid-obsessed agents</p>
     </div>
     """)
 

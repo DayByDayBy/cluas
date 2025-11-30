@@ -732,5 +732,8 @@ if __name__ == "__main__":
         print("Memory cleared!")
         sys.exit(0)
     
+    # Minimal fix for loading_status undefined error
+    demo.load(js="window.loading_status = window.loading_status || {};")
+    
     demo.queue()
     demo.launch(theme=theme, css=CUSTOM_CSS)

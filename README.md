@@ -12,10 +12,17 @@ license: apache-2.0
 short_description: A gathering of guides, a council of counsels
 ---
 
+
+
+# 🐦‍⬛ cluas huginn (thought's ear)  🐦‍⬛
+## - A Multi-Agent Research Council
+
+
 <div class="corvid-banner">
   <div class="corvid-banner-inner">
     <h1>CLUAS HUGINN</h1>
     <h2>A Multi-Agent Deliberation Engine</h2>
+</h2>
     <div class="corvid-banner-meta">Anno MMXXV — MCP 1st Birthday Hackathon Edition</div>
   </div>
 </div>
@@ -70,29 +77,35 @@ short_description: A gathering of guides, a council of counsels
 }
 </style>
 
-
-
-An example chatbot using [Gradio](https://gradio.app), [`huggingface_hub`](https://huggingface.co/docs/huggingface_hub/v0.22.2/en/index), and the [Hugging Face Inference API](https://huggingface.co/docs/api-inference/index).
-
-
-the above is just a template readme they gave me when I created this space on hugging face, feel free to ignore it.
-
-
-# 🐦‍⬛ Cluas
 *A gathering of guides, a council of counsels*
 
-> **Clúas** (Gaelic: "ear") — a dialectic research tool where AI experts collaborate, remember, and build knowledge over time.
+## What It Does
+Four specialised AI agents with **distinct epistemic roles** debate questions using **structured dialectic**, building knowledge over time.
 
-## What it Does
+- **Thesis**: Present findings with evidence  
+- **Antithesis**: Challenge, verify, and provide counterpoints  
+- **Synthesis**: Build consensus and update shared memory
 
-Corvid Council is a multi-agent MCP system that enables dialectic research 
-through collaborative AI agents. Present a question to the council and watch 
-as four specialized experts research, debate, and synthesize knowledge—building 
-on past discussions through shared memory.
+- **Evolution**: Future discussions build on accumulated knowledge
+
+
+##  Why It's Different
+- **Distinct epistemic roles**: Each agent uses specialized tools  
+- **Structured dialectic**: Reduces bias, promotes steelmanning  
+- **Persistent memory**: Knowledge accumulates over time  
+- **Tool-personality mapping**: Raven verifies news, Corvus searches literature, etc.
+
+## The Council
+| Agent   | Role | Icon |
+|---------|------|------|
+| Corvus  | Academic verifier (literature) | 🐦‍⬛ |
+| Raven   | Accountability enforcer (news)  | 🦅 |
+| Magpie  | Trend explorer (patterns)       | 🪶 |
+| Crow    | Grounded observer (environment)  | 🕊️ |
 
 ### Modes
 
-- **Collaborative Mode**: Ask a question and receive synthesized research with sources  
+- **Collaborative Mode**: Ask a question and receive synthesised research with sources  
 - **Active Mode**: Join the discussion, steer research, challenge claims
 
 ### Dialectic Process
@@ -106,13 +119,12 @@ on past discussions through shared memory.
 
 Most AI assistants are stateless. cluas_huginn Council remembers, learns, and builds knowledge over time.
 
+## 🛠 Tech Stack
+- **Base**: Python, Gradio  
+- **LLMs**: Groq/Nebius (Qwen 3)  
+- **Tools**: Academic search, news verification, web exploration  
+- **Memory**: Persistent character memories  
 
-### Characters
-
-- Corvus: 🐦‍⬛ (black bird)  
-- Magpie: 🪶 (feather, playful)  
-- Raven: 🦅 (eagle, serious)  
-- Crow: 🕊️ (dove, peaceful observer)
 
 ### Taglines
 
@@ -120,13 +132,6 @@ Most AI assistants are stateless. cluas_huginn Council remembers, learns, and bu
 - "Research that remembers, knowledge that accumulates"  
 - "Multi-agent MCP research collective"
 
-
-v2:
-
-# Cluas Huginn: Multi-Agent Dialectic System
-
-## What It Does
-Four AI agents with distinct roles debate questions using structured dialectic.
 
 ## Architecture
 - **Corvus**: Academic verifier (literature search)

@@ -153,10 +153,202 @@ class Corvus(Character):
                   messages: List[Dict],
                   tools: Optional[List[Dict]] = None,
                   temperature: float = 0.8,
-                  max_tokens: int = 150):
+                  max_tokens: int = 150,
+                  user_key: Optional[str] = None):
         """Call configured LLM providers with fallback order."""
-        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
         last_error = None
+        
+        # Try user keys first if provided (detect key type by prefix)
+        if user_key:
+            # OpenAI key (starts with 'sk-')
+            if user_key.startswith('sk-') and self._validate_api_key(user_key, 'sk-'):
+                try:
+                    user_client = OpenAI(api_key=user_key, timeout=self.provider_config.get("timeout", 30))
+                    response = user_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto" if tools else None,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                    logger.info("%s successfully used OpenAI user key", self.name)
+                    return response, "user-openai"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: OpenAI user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Anthropic key (starts with 'sk-ant-')
+            elif user_key.startswith('sk-ant-') and self._validate_api_key(user_key, 'sk-ant-'):
+                try:
+                    from anthropic import Anthropic
+                    user_client = Anthropic(api_key=user_key)
+                    # Convert messages to Anthropic format
+                    anthropic_messages = []
+                    system_msg = None
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            system_msg = msg["content"]
+                        else:
+                            anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+                    
+                    response = user_client.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        system=system_msg,
+                        messages=anthropic_messages
+                    )
+                    # Convert Anthropic response to OpenAI-like format
+                    class AnthropicResponse:
+                        def __init__(self, content):
+                            self.choices = [type('Choice', (), {
+                                'message': type('Message', (), {'content': content})()
+                            })()]
+                    
+                    content = response.content[0].text if response.content else ""
+                    logger.info("%s successfully used Anthropic user key", self.name)
+                    return AnthropicResponse(content), "user-anthropic"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: Anthropic user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Hugging Face key (starts with 'hf_')
+            elif user_key.startswith('hf_') and self._validate_api_key(user_key, 'hf_'):
+                try:
+                    from huggingface_hub import InferenceClient
+                    user_client = InferenceClient(token=user_key)
+                    
+                    # Use a good general-purpose model
+                    response = user_client.chat_completion(
+                        model="meta-llama/Llama-3.2-3B-Instruct",
+                        messages=messages,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        stream=False
+                    )
+                    
+                    # Convert HF response to OpenAI-like format
+                    class HFResponse:
+                        def __init__(self, content):
+                            self.choices = [type('Choice', (), {
+                                'message': type('Message', (), {'content': content})()
+                            })()]
+                    
+                    content = response.choices[0].message.content if response.choices else ""
+                    logger.info("%s successfully used Hugging Face user key", self.name)
+                    return HFResponse(content), "user-huggingface"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: Hugging Face user key failed (%s)", self.name, str(exc)[:100])
+            
+            # OpenRouter key (starts with 'or-')
+            elif user_key.startswith('or-') and self._validate_api_key(user_key, 'or-'):
+                try:
+                    user_client = OpenAI(
+                        api_key=user_key, 
+                        base_url="https://openrouter.ai/api/v1",
+                        timeout=self.provider_config.get("timeout", 30)
+                    )
+                    response = user_client.chat.completions.create(
+                        model="anthropic/claude-3-haiku",
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto" if tools else None,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                    logger.info("%s successfully used OpenRouter user key", self.name)
+                    return response, "user-openrouter"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: OpenRouter user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Cohere key (starts with 'cohere-')
+            elif user_key.startswith('cohere-') and self._validate_api_key(user_key, 'cohere-'):
+                try:
+                    from cohere import Client
+                    user_client = Client(api_key=user_key)
+                    
+                    # Convert messages to Cohere format
+                    cohere_messages = []
+                    system_prompt = ""
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            system_prompt = msg["content"]
+                        elif msg["role"] == "user":
+                            cohere_messages.append({"role": "USER", "message": msg["content"]})
+                        elif msg["role"] == "assistant":
+                            cohere_messages.append({"role": "CHATBOT", "message": msg["content"]})
+                    
+                    # Combine system prompt with first user message for Cohere
+                    if cohere_messages and system_prompt:
+                        cohere_messages[0]["message"] = f"{system_prompt}\n\n{cohere_messages[0]['message']}"
+                    
+                    response = user_client.generate(
+                        model="command",
+                        prompt=cohere_messages[-1]["message"] if cohere_messages else "",
+                        chat_history=cohere_messages[:-1],
+                        max_tokens=max_tokens,
+                        temperature=temperature
+                    )
+                    
+                    # Convert Cohere response to OpenAI-like format
+                    class CohereResponse:
+                        def __init__(self, content):
+                            self.choices = [type('Choice', (), {
+                                'message': type('Message', (), {'content': content})()
+                            })()]
+                    
+                    content = response.text if response.text else ""
+                    logger.info("%s successfully used Cohere user key", self.name)
+                    return CohereResponse(content), "user-cohere"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: Cohere user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Mistral key (starts with 'mistral-')
+            elif user_key.startswith('mistral-') and self._validate_api_key(user_key, 'mistral-'):
+                try:
+                    from mistralai import Mistral
+                    
+                    # Mistral API supports system messages natively (as first message)
+                    mistral_messages = []
+                    for msg in messages:
+                        mistral_messages.append({"role": msg["role"], "content": msg["content"]})
+                    
+                    with Mistral(api_key=user_key) as client:
+                        response = client.chat.complete(
+                            model="mistral-tiny",
+                            messages=mistral_messages,
+                            max_tokens=max_tokens,
+                            temperature=temperature
+                        )
+                    
+                    # Convert Mistral response to OpenAI-like format
+                    class MistralResponse:
+                        def __init__(self, content):
+                            self.choices = [type('Choice', (), {
+                                'message': type('Message', (), {'content': content})()
+                            })()]
+                    
+                    content = response.choices[0].message.content if response.choices else ""
+                    logger.info("%s successfully used Mistral user key", self.name)
+                    return MistralResponse(content), "user-mistral"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: Mistral user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Unknown or invalid key type
+            else:
+                if user_key:
+                    logger.warning("%s: Unknown or invalid user key format, skipping user key", self.name)
+
+        # Fallback to configured providers (avoid duplicates with user key)
+        providers = []
+        if user_key:
+            providers.append("user")
+        providers += [p for p in [self.provider_config["primary"]] + self.provider_config.get("fallback", []) if p not in providers]
 
         for provider in providers:
             client = self.clients.get(provider)
@@ -204,7 +396,7 @@ class Corvus(Character):
         logger.info(f"{self.name}'s memory cleared.")
 
     
-    async def respond(self, message: str,history: Optional[List[Dict]] = None) -> str:
+    async def respond(self, message: str, history: Optional[List[Dict]] = None, user_key: Optional[str] = None) -> str:
         
         """ Generate a response.
                     
@@ -213,16 +405,17 @@ class Corvus(Character):
                     Args:
                         message: User's message
                         history: LLM-formatted history (already flat format)
+                        user_key: Optional user-provided API key
                     
                     Returns:
                         Plain text response (no formatting)
         """
         
         if self.use_cloud:
-            return await self._respond_cloud(message, history)
+            return await self._respond_cloud(message, history, user_key=user_key)
         return self._respond_ollama(message, history)
     
-    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None, user_key: Optional[str] = None) -> str:
         """Use configured cloud providers with tools."""
         
         if "paper" in message.lower() and len(message.split()) < 10:   # maybe add other keywords? "or study"? "or article"?
@@ -244,7 +437,8 @@ class Corvus(Character):
             messages=messages,
             tools=tools,
             temperature=0.8,
-            max_tokens=150
+            max_tokens=150,
+            user_key=user_key
         )
         
         choice = first_response.choices[0]
@@ -294,7 +488,8 @@ class Corvus(Character):
                 final_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.8,
-                    max_tokens=200  # More tokens for synthesis
+                    max_tokens=200,  # More tokens for synthesis
+                    user_key=user_key
                 )
                 
                 return final_response.choices[0].message.content.strip()

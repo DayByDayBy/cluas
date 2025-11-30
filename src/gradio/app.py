@@ -98,11 +98,11 @@ def format_message(character: Character, message: str) -> Tuple[str, str]:
     
     return formatted, name
 
-async def get_character_response(char: Character, message: str, llm_history: List[Dict]) -> str:
+async def get_character_response(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None) -> str:
     """Get response from a character; uses pre-formatted llm_history"""
     try:
         
-        response = await char.respond(message, llm_history)
+        response = await char.respond(message, llm_history, user_key=user_key)
         return response
     except Exception as e:
         logger.error(f"{char.name} error: {str(e)}")
@@ -118,7 +118,7 @@ async def get_character_response(char: Character, message: str, llm_history: Lis
         
 
 
-async def chat_fn(message: str, history: list):
+async def chat_fn(message: str, history: list, user_key: Optional[str] = None):
     """async chat handler, using dataclasses internally"""
     if not message.strip():
         yield history
@@ -152,7 +152,7 @@ async def chat_fn(message: str, history: list):
         
         try:
             llm_history = to_llm_history(internal_history[-5:])
-            response = await get_character_response(char, message, llm_history)
+            response = await get_character_response(char, message, llm_history, user_key=user_key)
             
             history.pop()  # removes typing indicator
             
@@ -211,7 +211,7 @@ def _history_text(history: List[str], limit: int = 13) -> str:
     return "\n".join(history[-limit:])
 
 
-async def _neutral_summary(history_text: str, moderator: Character = moderator_instance) -> str:
+async def _neutral_summary(history_text: str, moderator: Character = None, user_key: Optional[str] = None) -> str:
     if not history_text.strip():
         return "No discussion to summarize."
     prompt = (
@@ -219,16 +219,16 @@ async def _neutral_summary(history_text: str, moderator: Character = moderator_i
         "Summarize the key points, agreements, and disagreements succinctly..\n\n"
         f"TRANSCRIPT:\n{history_text}"
     )
-    return await get_character_response(moderator, prompt, [])
+    return await get_character_response(moderator, prompt, [], user_key=user_key)
 
 
-async def _summarize_cycle(history_text: str, moderator: Character = None) -> str:
+async def _summarize_cycle(history_text: str, moderator: Character = None, user_key: Optional[str] = None) -> str:
     prompt = (
         "Provide a concise recap (3 sentences max) capturing the thesis, antithesis, "
         "and synthesis highlights from the transcript below.\n\n"
         f"{history_text}"
     )
-    return await get_character_response(moderator, prompt, [])
+    return await get_character_response(moderator, prompt, [], user_key=user_key)
 
 #  messaage format translators:
 
@@ -254,6 +254,7 @@ async def deliberate(
     format: Literal["llm", "chat"] = "llm",
     structure: Literal["nested", "flat"] = "nested",
     seed: Optional[int] = None,
+    user_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run a dialectic deliberation (thesis → antithesis → synthesis) with the Corvid Council.
@@ -307,7 +308,7 @@ async def deliberate(
                 history_snippet=history_excerpt,
             )
             prompts.append((char.name, prompt))
-            tasks.append(get_character_response(char, prompt, []))
+            tasks.append(get_character_response(char, prompt, [], user_key=user_key))
 
         responses = await asyncio.gather(*tasks, return_exceptions=True)
         entries: List[Dict[str, Any]] = []
@@ -351,7 +352,7 @@ async def deliberate(
         synthesis_entries = await run_phase("synthesis", cycle_context, cycle_idx)
 
         cycle_text = _history_text(conversation_llm, limit=36)
-        summary_text = await _summarize_cycle(cycle_text)
+        summary_text = await _summarize_cycle(cycle_text, user_key=user_key)
         cycle_summaries.append({
             "cycle": cycle_idx + 1,
             "summary": summary_text,
@@ -362,7 +363,7 @@ async def deliberate(
     summariser_normalized = summariser.strip().lower()
 
     if summariser_normalized == "moderator":
-        final_summary = await _neutral_summary(full_history_text)
+        final_summary = await _neutral_summary(full_history_text, user_key=user_key)
         summary_author = "Moderator"
     else:
         name_map = {char.name.lower(): char for char in CHARACTERS}
@@ -373,8 +374,8 @@ async def deliberate(
             "Provide a concise synthesis (3 sentences max) from your perspective, referencing the discussion below.\n\n"
             f"{full_history_text}"
         )
-        final_summary = await get_character_response(selected, summary_prompt, [])
-        summary_author = selected.name
+        final_summary = await get_character_response(selected, summary_prompt, [], user_key=user_key)
+        summary_author = summariser.title()
 
     history_output: List[Any]
     if format == "chat":
@@ -404,7 +405,7 @@ async def deliberate(
     }
 
 
-async def run_deliberation_and_export(question, rounds, summariser):
+async def run_deliberation_and_export(question, rounds, summariser, user_key: Optional[str] = None):
     """Run the deliberation AND produce a downloadable .txt file."""
     
     if not question or question.strip() == "":
@@ -417,7 +418,8 @@ async def run_deliberation_and_export(question, rounds, summariser):
             rounds=rounds, 
             summariser=summariser,
             format="llm",  # to ensure it actually gets text format
-            structure="flat"
+            structure="flat",
+            user_key=user_key
         )
         
        # format html for display
@@ -557,17 +559,24 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 msg = gr.Textbox(
                     label="Your Message",
                     placeholder="Ask the council a question...",
-                    scale=4,
+                    scale=3,
+                    container=False,
+                )
+                user_key = gr.Textbox(
+                    label="API Key (Optional)",
+                    placeholder="OpenAI (sk-...), Anthropic (sk-ant-...), or HF (hf_...)",
+                    type="password",
+                    scale=2,
                     container=False,
                 )
                 submit_btn = gr.Button("Send", variant="primary", scale=1)
 
             # Handle submit
-            msg.submit(chat_fn, [msg, chat_state], [chat_state], queue=True)\
+            msg.submit(chat_fn, [msg, chat_state, user_key], [chat_state], queue=True)\
                 .then(render_chat_html, [chat_state], [chat_html])\
                 .then(lambda: "", None, [msg])
 
-            submit_btn.click(chat_fn, [msg, chat_state], [chat_state], queue=True)\
+            submit_btn.click(chat_fn, [msg, chat_state, user_key], [chat_state], queue=True)\
                 .then(render_chat_html, [chat_state], [chat_html])\
                 .then(lambda: "", None, [msg])
                 
@@ -584,6 +593,12 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                     label="Question for the Council",
                     placeholder="What would you like the council to deliberate on?",
                     lines=3,
+                    scale=2,
+                )
+                delib_user_key = gr.Textbox(
+                    label="API Key (Optional)",
+                    placeholder="OpenAI (sk-...), Anthropic (sk-ant-...), or HF (hf_...)",
+                    type="password",
                     scale=1,
                 )
 
@@ -614,7 +629,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
             # Wire up deliberation
             deliberate_btn.click(
                 fn=run_deliberation_and_export,
-                inputs=[question_input, rounds_input, summariser_input],
+                inputs=[question_input, rounds_input, summariser_input, delib_user_key],
                 outputs=[deliberation_output, download_btn],
                 queue=True,
                 show_progress=True

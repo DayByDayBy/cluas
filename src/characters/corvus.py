@@ -48,8 +48,8 @@ class Corvus(Character):
                 "primary": "groq",
                 "fallback": ["nebius"],
                 "models": {
-                    "groq": "qwen/qwen3-32b",
-                    "nebius": "Qwen3-30B-A3B-Instruct-2507"
+                    "groq": "llama-3.1-8b-instant",
+                    "nebius": "meta-llama/Meta-Llama-3.1-8B-Instruct"
                 },
                 "timeout": 30,
                 "use_cloud": True

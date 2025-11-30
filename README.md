@@ -121,7 +121,7 @@ Most AI assistants are stateless. cluas_huginn Council remembers, learns, and bu
 
 ## 🛠 Tech Stack
 - **Base**: Python, Gradio  
-- **LLMs**: Groq/Nebius (Qwen 3)  
+- **LLMs**: UserKeys/Groq/Nebius/etc (various models, llama3.3 main)  
 - **Tools**: Academic search, news verification, web exploration  
 - **Memory**: Persistent character memories  
 
@@ -132,7 +132,6 @@ Most AI assistants are stateless. cluas_huginn Council remembers, learns, and bu
 - "Research that remembers, knowledge that accumulates"  
 - "Multi-agent MCP research collective"
 
-
 ## Architecture
 - **Corvus**: Academic verifier (literature search)
 - **Raven**: Accountability enforcer (news verification)
@@ -141,36 +140,16 @@ Most AI assistants are stateless. cluas_huginn Council remembers, learns, and bu
 
 ## Key Innovations
 1. Unified inheritance architecture
-2. Shared epistemic principles with character differentiation
+2. Shared epistemic principles with "Four Temperament" character differentiation
 3. Tool-use heuristics per character
 4. Steelmanning and collaborative disagreement built-in
 
-## Tech Stack
-- Base: Python, Gradio
-- LLMs: Groq/Nebius (Qwen 3)
-- Tools: Academic search, news verification, web exploration
-- Memory: Persistent character memories
 
 ## What Makes This Different
 - Not just multiple LLMs - distinct epistemic roles
 - Structured dialectic (thesis/antithesis/synthesis)
 - Tool usage guided by character personality
 - Collaborative, not adversarial
-
-
-
-
-
-
-
-
-
-
-
-
-av
-
-
 
 
 ---

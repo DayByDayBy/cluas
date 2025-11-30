@@ -103,15 +103,7 @@ Four AI agents with distinct roles debate questions using structured dialectic.
 
 
 
-## Hackathon Track Entries
-
-- "building-mcp-track-enterprise" → Track 1
-- "building-mcp-track-consumer" → Track 1
-- "building-mcp-track-creative" → Track 1
-
-- "mcp-in-action-track-enterprise" → Track 2
-- "mcp-in-action-track-consumer" → Track 2
-- "mcp-in-action-track-creative" → Track 2
+av
 
 
 

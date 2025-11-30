@@ -170,10 +170,30 @@ class Raven(Character):
         ]
 
     def _call_llm(self, messages: List[Dict], tools: Optional[List[Dict]] = None, 
-                  temperature: float = 0.8, max_tokens: int = 150) -> tuple:
+                  temperature: float = 0.8, max_tokens: int = 150, user_key: Optional[str] = None) -> tuple:
         """Call LLM with automatic fallback"""
-        providers = [self.provider_config["primary"]] + self.provider_config["fallback"]
         last_error = None
+        
+        # Try user key first if provided
+        if user_key:
+            try:
+                # Create temporary OpenAI client with user key
+                user_client = OpenAI(api_key=user_key, timeout=self.provider_config.get("timeout", 30))
+                response = user_client.chat.completions.create(
+                    model="gpt-4o-mini",  # Default model for user key
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto" if tools else None,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                logger.info("%s successfully used user key", self.name)
+                return response, "user"
+            except Exception as exc:
+                last_error = exc
+                logger.warning("%s: user key failed (%s)", self.name, str(exc)[:100])
+        
+        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
         
         for provider in providers:
             if provider not in self.clients:
@@ -207,13 +227,14 @@ class Raven(Character):
 
     async def respond(self, 
                      message: str,
-                     history: Optional[List[Dict]] = None) -> str:
+                     history: Optional[List[Dict]] = None,
+                     user_key: Optional[str] = None) -> str:
         """Generate a response."""
         if self.use_cloud:
-            return await self._respond_cloud(message, history)
+            return await self._respond_cloud(message, history, user_key=user_key)
         return self._respond_ollama(message, history)
 
-    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None) -> str:
+    async def _respond_cloud(self, message: str, history: Optional[List[Dict]] = None, user_key: Optional[str] = None) -> str:
         """Use cloud providers with tool calling for Raven's investigative workflow."""
         messages = [{"role": "system", "content": self.get_system_prompt()}]
 
@@ -229,7 +250,8 @@ class Raven(Character):
             messages=messages,
             tools=tools,
             temperature=0.8,
-            max_tokens=150
+            max_tokens=150,
+            user_key=user_key
         )
 
         choice = first_response.choices[0]
@@ -270,7 +292,8 @@ class Raven(Character):
                 second_response, _ = self._call_llm(
                     messages=messages,
                     temperature=0.8,
-                    max_tokens=200
+                    max_tokens=200,
+                    user_key=user_key
                 )
                 return second_response.choices[0].message.content.strip()
 

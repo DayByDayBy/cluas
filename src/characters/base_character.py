@@ -21,6 +21,6 @@ class Character(ABC):
         self.delay = getattr(self, "delay", 1.0)
 
     @abstractmethod
-    async def respond(self, message: str, history: List[Dict]) -> str:
+    async def respond(self, message: str, history: List[Dict], user_key: Optional[str] = None) -> str:
         """Return character response based on message and conversation history."""
         pass

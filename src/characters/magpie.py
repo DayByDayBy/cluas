@@ -164,10 +164,97 @@ class Magpie(Character):
                   messages: List[Dict],
                   tools: Optional[List[Dict]] = None,
                   temperature: float = 0.8,
-                  max_tokens: int = 150):
+                  max_tokens: int = 150,
+                  user_key: Optional[str] = None):
         """Call configured LLM providers with fallback order."""
-        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
         last_error = None
+        
+        # Try user keys first if provided (detect key type by prefix)
+        if user_key:
+            # OpenAI key (starts with 'sk-')
+            if user_key.startswith('sk-'):
+                try:
+                    user_client = OpenAI(api_key=user_key, timeout=self.provider_config.get("timeout", 30))
+                    response = user_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto" if tools else None,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                    logger.info("%s successfully used OpenAI user key", self.name)
+                    return response, "user-openai"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: OpenAI user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Anthropic key (starts with 'sk-ant-')
+            elif user_key.startswith('sk-ant-'):
+                try:
+                    from anthropic import Anthropic
+                    user_client = Anthropic(api_key=user_key)
+                    # Convert messages to Anthropic format
+                    anthropic_messages = []
+                    system_msg = None
+                    for msg in messages:
+                        if msg["role"] == "system":
+                            system_msg = msg["content"]
+                        else:
+                            anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+                    
+                    response = user_client.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        system=system_msg,
+                        messages=anthropic_messages
+                    )
+                    # Convert Anthropic response to OpenAI-like format
+                    class AnthropicResponse:
+                        def __init__(self, content):
+                            self.choices = [type('Choice', (), {
+                                'message': type('Message', (), {'content': content})()
+                            })()]
+                    
+                    content = response.content[0].text if response.content else ""
+                    logger.info("%s successfully used Anthropic user key", self.name)
+                    return AnthropicResponse(content), "user-anthropic"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: Anthropic user key failed (%s)", self.name, str(exc)[:100])
+            
+            # Hugging Face key (starts with 'hf_')
+            elif user_key.startswith('hf_'):
+                try:
+                    from huggingface_hub import InferenceClient
+                    user_client = InferenceClient(token=user_key)
+                    
+                    # Use a good general-purpose model
+                    response = user_client.chat_completion(
+                        model="meta-llama/Llama-3.2-3B-Instruct",
+                        messages=messages,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        stream=False
+                    )
+                    
+                    # Convert HF response to OpenAI-like format
+                    class HFResponse:
+                        def __init__(self, content):
+                            self.choices = [type('Choice', (), {
+                                'message': type('Message', (), {'content': content})()
+                            })()]
+                    
+                    content = response.choices[0].message.content if response.choices else ""
+                    logger.info("%s successfully used Hugging Face user key", self.name)
+                    return HFResponse(content), "user-huggingface"
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: Hugging Face user key failed (%s)", self.name, str(exc)[:100])
+        
+        # Fallback to configured providers
+        providers = [self.provider_config["primary"]] + self.provider_config.get("fallback", [])
 
         for provider in providers:
             client = self.clients.get(provider)
@@ -196,7 +283,8 @@ class Magpie(Character):
 
     async def respond(self, 
                      message: str,
-                     history: Optional[List[Dict]] = None) -> str:
+                     history: Optional[List[Dict]] = None,
+                     user_key: Optional[str] = None) -> str:
         """Generate a response."""
         if self.use_cloud:
             return await self._respond_cloud(message, history)

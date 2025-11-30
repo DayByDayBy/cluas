@@ -149,7 +149,9 @@ Most AI assistants are stateless. cluas_huginn remembers, learns, and builds kno
 ## On linked in:
 https://www.linkedin.com/posts/james-boag_cluas-huginn-is-almost-ready-to-submit-activity-7401042694279467008-9eKI
 
+###   on youtube:
 
+https://www.youtube.com/watch?v=4t2Jrg2Wi5o
 ---
 
 This project is licensed under the [Apache 2.0 License](LICENSE).

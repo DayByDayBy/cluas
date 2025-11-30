@@ -1,3 +1,19 @@
+"""a bunch of formatters for server.py"""
+
+
+__all__ = [
+    'format_bird_sightings',
+    'format_news_results',
+    'format_local_weather',
+    'format_search_results',
+    'format_temporal_patterns',
+    'format_trend_angles',
+    'format_trending_topics',
+    'format_weather_patterns',
+    'format_web_search_results'
+]
+
+
 def format_search_results(results: dict) -> str:
     """format search results into readable string"""
     output = []
@@ -11,7 +27,7 @@ def format_search_results(results: dict) -> str:
             if authors:
                 output.append(f"   Authors: {', '.join(authors[:3])}")
             abstract = paper.get('abstract', 'No Abstract')
-            if  abstract != 'No Abstract':
+            if abstract and abstract != 'No Abstract' and isinstance(abstract, str):
                 output.append(f"   Abstract: {abstract[:200]}...\n")
             output.append("")
             

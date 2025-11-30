@@ -1,6 +1,8 @@
 # src/cluas_mcp/web/trending.py
 from pytrends.request import TrendReq
 import logging
+import asyncio
+from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -105,3 +107,59 @@ def _mock_trending(category: str) -> dict:
         "category": category,
         "source": "mock_data"
     }
+
+
+async def explore_trend_angles(topic: str, location: Optional[str] = None, depth: str = "medium") -> Dict:
+    """
+    Explore a trend from multiple angles: trending status, why it's trending, 
+    cultural narrative, local context, and criticism.
+    
+    Args:
+        topic: The trend/topic to explore
+        location: Optional location for local angle
+        depth: "light" (quick), "medium" (standard), or "deep" (thorough)
+    
+    Returns:
+        Dict with keys: trending, surface_drivers, narrative, local_angle (if location), criticism (if deep)
+    """
+    from src.cluas_mcp.web.explore_web import explore_web
+    
+    loop = asyncio.get_event_loop()
+    
+    # Build task list based on depth
+    tasks = [
+        loop.run_in_executor(None, lambda: get_trends(topic)),
+        loop.run_in_executor(None, lambda: explore_web(f"why {topic} trending 2025")),
+    ]
+    
+    if depth in ["medium", "deep"]:
+        tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} cultural shift 2025")))
+    
+    if location:
+        tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} {location} 2025")))
+    
+    if depth == "deep":
+        tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} criticism problems 2025")))
+    
+    # Execute all tasks in parallel
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Parse results
+    angles = {
+        'trending': results[0] if not isinstance(results[0], Exception) else None,
+        'surface_drivers': results[1] if not isinstance(results[1], Exception) else None,
+    }
+    
+    result_idx = 2
+    if depth in ["medium", "deep"]:
+        angles['narrative'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+        result_idx += 1
+    
+    if location:
+        angles['local_angle'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+        result_idx += 1
+    
+    if depth == "deep":
+        angles['criticism'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
+    
+    return angles

@@ -41,7 +41,6 @@ class Magpie(Character):
         self.tool_functions = {
             "explore_web": explore_web,
             "get_trends": get_trends,
-            "explore_trend_angles": self.explore_trend_angles,
             "check_local_weather": check_local_weather
         }
         
@@ -69,58 +68,6 @@ class Magpie(Character):
         recent_trends = self.trend_memory.get_recent(days=7) if hasattr(self, 'trend_memory') else None
         return magpie_system_prompt(location=self.location, recent_trends=recent_trends)
 
-    async def explore_trend_angles(self, topic: str, location: Optional[str] = None, depth: str = "medium") -> Dict:
-        """
-        Explore a trend from multiple angles: trending status, why it's trending, 
-        cultural narrative, local context, and criticism.
-        
-        Args:
-            topic: The trend/topic to explore
-            location: Optional location for local angle
-            depth: "light" (quick), "medium" (standard), or "deep" (thorough)
-        
-        Returns:
-            Dict with keys: trending, surface_drivers, narrative, local_angle (if location), criticism (if deep)
-        """
-        loop = asyncio.get_event_loop()
-        
-        # Build task list based on depth
-        tasks = [
-            loop.run_in_executor(None, lambda: get_trends(topic)),
-            loop.run_in_executor(None, lambda: explore_web(f"why {topic} trending 2025")),
-        ]
-        
-        if depth in ["medium", "deep"]:
-            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} cultural shift 2025")))
-        
-        if location:
-            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} {location} 2025")))
-        
-        if depth == "deep":
-            tasks.append(loop.run_in_executor(None, lambda: explore_web(f"{topic} criticism problems 2025")))
-        
-        # Execute all tasks in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Parse results
-        angles = {
-            'trending': results[0] if not isinstance(results[0], Exception) else None,
-            'surface_drivers': results[1] if not isinstance(results[1], Exception) else None,
-        }
-        
-        result_idx = 2
-        if depth in ["medium", "deep"]:
-            angles['narrative'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
-            result_idx += 1
-        
-        if location:
-            angles['local_angle'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
-            result_idx += 1
-        
-        if depth == "deep":
-            angles['criticism'] = results[result_idx] if not isinstance(results[result_idx], Exception) else None
-        
-        return angles
 
 
 
@@ -185,34 +132,6 @@ class Magpie(Character):
                         "required": []
                     }
                 }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "explore_trend_angles",
-                    "description": "Deep dive on a trend: explore from multiple angles (why it's trending, cultural narrative, local context, criticism). Returns structured data for synthesis.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "topic": {
-                                "type": "string",
-                                "description": "Trend or topic to explore"
-                            },
-                            "location": {
-                                "type": "string",
-                                "description": "Optional location for local angle (e.g., 'Brooklyn', 'Tokyo')"
-                            },
-                            "depth": {
-                                "type": "string",
-                                "enum": ["light", "medium", "deep"],
-                                "description": "Exploration depth: light (quick), medium (standard), deep (thorough)",
-                                "default": "medium"
-                            }
-                        },
-                        "required": ["topic"]
-                    }
-                }
-            }
         ]
 
     def _call_llm(self,
@@ -343,13 +262,6 @@ class Magpie(Character):
                     trending_results = await loop.run_in_executor(None, lambda: tool_func(category))
                     tool_result = self._format_trending_topics_for_llm(trending_results)
             
-            elif tool_name == "explore_trend_angles":
-                topic = args.get("topic")
-                location_arg = args.get("location")
-                depth = args.get("depth", "medium")
-                if topic:
-                    angles_results = await self.explore_trend_angles(topic, location_arg, depth)
-                    tool_result = self._format_trend_angles_for_llm(angles_results)
             
             if tool_result:
                 # Add tool call and result to conversation

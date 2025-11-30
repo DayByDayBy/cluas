@@ -101,9 +101,26 @@ async def check_weather(location: str) -> str:
     except Exception as e:
         return f"Sorry, I couldn’t fetch the weather for {location} right now. ({e})"
 
-async def check_local_weather(character) -> str:
-    """Fetch casual weather description for character's location."""
-    location = getattr(character, "location", None)
+def check_local_weather_sync(location: str | None = None, character: Any = None) -> dict:
+    """Sync wrapper for MCP executor."""
+    import asyncio
+    return asyncio.run(check_local_weather(location=location, character=character))
+
+
+async def check_local_weather(location: str | None = None, character: Any = None) -> dict:
+    """Fetch casual weather description for a location or a character's location."""
+    if location is None and character is not None:
+        location = getattr(character, "location", None)
+
     if not location:
-        return "I don’t know where you are, so I can’t check the weather!"
+        return {
+            "location": "unknown",
+            "temperature": "N/A",
+            "feels_like": "N/A",
+            "condition": "unknown",
+            "wind_speed": "N/A",
+            "precipitation": "N/A",
+            "time": "N/A",
+        }
+
     return await check_weather(location)

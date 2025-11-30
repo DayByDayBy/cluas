@@ -22,47 +22,37 @@ LOCATION_COORDS = {
 }
 
 
-def fetch_bird_sightings(location: str = None, max_results: int = 10) -> List[Dict[str, Any]]:
+def fetch_bird_sightings(location: str = None, max_results: int = 10, species: str = None) -> list[dict]:
     """
     Get recent bird sightings near a location using eBird API.
-    
-    Args:
-        location: Location name or region code (e.g., "Glasgow, UK" or "GB-SCT")
-        max_results: Maximum number of results to return
-        
-    Returns:
-        List of bird sighting dicts with species, location, date info
     """
     logger.info(f"Getting bird sightings for location: {location or 'default (HF HQ)'}")
-    
+
     api_key = os.getenv("EBIRD_API_KEY")
-    
+    sightings: list[dict] = []
+
     if not api_key:
         logger.warning("EBIRD_API_KEY not found, using mock data")
-        return _mock_sightings(location, max_results)
-    
+        return _mock_sightings(location, max_results, species)
+
     try:
         headers = {"X-eBirdApiToken": api_key}
-        
-        # Try to match location to known coordinates
+
         location_lower = (location or "").lower().split(",")[0].strip()
         coords = LOCATION_COORDS.get(location_lower)
-        
+
         if coords:
-            # Use lat/lng endpoint for known locations
             url = f"{EBIRD_BASE_URL}/data/obs/geo/recent"
             params = {
                 "lat": coords["lat"],
                 "lng": coords["lng"],
                 "maxResults": max_results,
-                "dist": 25,  # 25km radius (max is 50)
+                "dist": 25,
             }
         elif location and len(location) <= 12 and "-" in location:
-            # Looks like a region code (e.g., "US-NY", "GB-SCT", "US-NY-047")
             url = f"{EBIRD_BASE_URL}/data/obs/{location}/recent"
             params = {"maxResults": max_results}
         else:
-            # Default to coordinates-based search with default location
             url = f"{EBIRD_BASE_URL}/data/obs/geo/recent"
             params = {
                 "lat": DEFAULT_LAT,
@@ -70,17 +60,25 @@ def fetch_bird_sightings(location: str = None, max_results: int = 10) -> List[Di
                 "maxResults": max_results,
                 "dist": 25,
             }
-        
+
         response = requests.get(url, headers=headers, params=params, timeout=10)
         response.raise_for_status()
-        
+
         sightings = response.json()
         logger.info(f"Retrieved {len(sightings)} sightings from eBird API")
+
+        if species:   
+            species_lower = species.lower()
+            sightings = [
+                s for s in sightings
+                if species_lower in s.get("comName", "").lower() or species_lower in s.get("sciName", "").lower()
+            ]
         return sightings
-    
+
     except requests.exceptions.RequestException as e:
         logger.error(f"eBird API error: {e}")
-        return _mock_sightings(location, max_results)
+        return _mock_sightings(location, max_results, species)
+
 
 
 def _mock_sightings(location: str = None, max_results: int = 10) -> List[Dict[str, Any]]:

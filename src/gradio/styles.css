@@ -107,14 +107,37 @@ button:hover {
     max-width: 75%;
 }
 
+/* CHAT LAYOUT CLASSES */
+.chat-layout {
+    gap: 16px;
+}
+
+.chat-input-col,
+.chat-output-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-output-col {
+    justify-content: space-between;
+}
+
+#chat-container {
+    width: 100%;
+    max-width: none;
+}
+
+/* BUTTON SYMMETRY */
 .chat-btn {
     display: flex;
     justify-content: center;
+    margin-top: 12px;
 }
 
 .chat-btn button {
     width: 220px;
     max-width: 100%;
+    min-height: 44px; /* ensure equal height */
 }
 
 .chat-name {

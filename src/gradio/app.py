@@ -66,7 +66,7 @@ CUSTOM_CSS = CSS_PATH.read_text() if CSS_PATH.exists() else ""
 
 def clear_chat():
     """Clear the chat history."""
-    return []
+    return [], ""
 
 theme = Monochrome(
     font=["Söhne", "sans-serif"],
@@ -246,7 +246,8 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
             "role": "assistant",
             "content": f"*{char.name} is thinking...*",
             "name": char.name,
-            "avatar": f"avatars/{char.name.lower()}.png"
+            "emoji": char.emoji,
+            "typing": True
         })
         typing_count += 1
 

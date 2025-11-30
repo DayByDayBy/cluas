@@ -1,3 +1,17 @@
+---
+title: cluas_huginn
+emoji: 💬
+colorFrom: yellow
+colorTo: purple
+sdk: docker
+pinned: false
+hf_oauth: true
+hf_oauth_scopes:
+- inference-api
+license: apache-2.0
+short_description: A gathering of guides, a council of counsels
+---
+
 <div class="corvid-banner">
   <div class="corvid-banner-inner">
     <h1>The Corvidian Council</h1>
@@ -56,19 +70,7 @@
 }
 </style>
 
----
-title: cluas_huginn
-emoji: 💬
-colorFrom: yellow
-colorTo: purple
-sdk: docker
-pinned: false
-hf_oauth: true
-hf_oauth_scopes:
-- inference-api
-license: apache-2.0
-short_description: A gathering of guides, a council of counsels
----
+
 
 An example chatbot using [Gradio](https://gradio.app), [`huggingface_hub`](https://huggingface.co/docs/huggingface_hub/v0.22.2/en/index), and the [Hugging Face Inference API](https://huggingface.co/docs/api-inference/index).
 

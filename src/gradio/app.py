@@ -24,13 +24,15 @@ corvus = Corvus()
 magpie = Magpie()
 raven = Raven()
 crow = Crow()
-moderator_instance = Moderator()  # always available
+moderator_instance = Moderator()
 
 # register them
 register_instance(corvus)
 register_instance(magpie)
 register_instance(raven)
 register_instance(crow)
+
+
 
 # then use
 CHARACTERS = get_all_characters()  # List[Character]
@@ -213,7 +215,10 @@ def _history_text(history: List[str], limit: int = 13) -> str:
 
 async def _neutral_summary(history_text: str, moderator: Character = None, user_key: Optional[str] = None) -> str:
     if not history_text.strip():
-        return "No discussion to summarize."
+        return "No discussion to summarize."    
+    if moderator is None:
+        moderator = moderator_instance
+
     prompt = (
         "You are the moderator. "
         "Summarize the key points, agreements, and disagreements succinctly..\n\n"
@@ -221,8 +226,11 @@ async def _neutral_summary(history_text: str, moderator: Character = None, user_
     )
     return await get_character_response(moderator, prompt, [], user_key=user_key)
 
-
 async def _summarize_cycle(history_text: str, moderator: Character = None, user_key: Optional[str] = None) -> str:
+    
+    if moderator is None:
+        moderator = moderator_instance
+    
     prompt = (
         "Provide a concise recap (3 sentences max) capturing the thesis, antithesis, "
         "and synthesis highlights from the transcript below.\n\n"
@@ -244,8 +252,6 @@ def to_html(message: UIMessage) -> str:
         </div>
     </div>
     """
-
-
 
 async def deliberate(
     question: str,

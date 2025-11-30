@@ -262,10 +262,11 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
             response = ""
             async for chunk in get_character_response_stream(char, msg, llm_history, user_key):
                 response += chunk
-                # Update with partial response
+                # Update with partial response (sanitized)
+                sanitized_partial = sanitize_tool_calls(response)
                 history.append({
                     "role": "assistant", 
-                    "content": response,
+                    "content": sanitized_partial,
                     "name": char.name,
                     "emoji": char.emoji,
                     "streaming": True
@@ -743,6 +744,9 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                 .then(lambda: "", None, [msg])
 
             submit_btn.click(chat_fn, [msg, chat_state, user_key], [chat_html], queue=True)\
+                .then(lambda: "", None, [msg])
+            
+            clear_btn.click(clear_chat, outputs=[chat_state, chat_html])\
                 .then(lambda: "", None, [msg])
                 
         # TAB 2: Deliberation mode

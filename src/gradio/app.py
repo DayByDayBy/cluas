@@ -563,7 +563,6 @@ def format_deliberation_html(entries: list | dict) -> str:
     html_parts.append('</div>')
     return ''.join(html_parts)
 
-# # Theme configuration
 # theme = gr.themes.Soft(
 #     primary_hue=None,
 #     secondary_hue=None,
@@ -576,16 +575,16 @@ def format_deliberation_html(entries: list | dict) -> str:
 # )
 
 
-theme = gr.themes.Base(
-    primary_hue=None,
-    secondary_hue=None,
-    neutral_hue=None,
-    font=None,           # Let CSS handle fonts
-    font_mono=None,      # CSS handles monospace fonts
-    radius_size=None,    # CSS handles border-radius
-    spacing_size=None,   # CSS handles spacing
-    text_size=None,      # CSS handles text size
-)
+# theme = gr.themes.Base(
+#     primary_hue=None,
+#     secondary_hue=None,
+#     neutral_hue=None,
+#     font=None,           # Let CSS handle fonts
+#     font_mono=None,      # CSS handles monospace fonts
+#     radius_size=None,    # CSS handles border-radius
+#     spacing_size=None,   # CSS handles spacing
+#     text_size=None,      # CSS handles text size
+# )
 
 # Create Gradio interface
 with gr.Blocks(title="Cluas Huginn") as demo:

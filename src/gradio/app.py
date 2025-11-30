@@ -63,6 +63,9 @@ PHASE_INSTRUCTIONS = {
 CSS_PATH = Path(__file__).parent / "styles.css"
 CUSTOM_CSS = CSS_PATH.read_text() if CSS_PATH.exists() else ""
 
+def clear_chat():
+    """Clear the chat history."""
+    return []
 
 theme = Monochrome(
     font=["Söhne", "sans-serif"],
@@ -700,7 +703,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
             # Chatbot with avatars
             chat_html = gr.HTML(elem_id="chat-container", interactive=True)
             chat_state = gr.State([])
-
+            
             # User input row
             with gr.Row():
                 msg = gr.Textbox(
@@ -710,6 +713,20 @@ with gr.Blocks(title="Cluas Huginn") as demo:
                     container=False,
                 )
                 submit_btn = gr.Button("Send", variant="primary", scale=1)
+                clear_btn = gr.Button("Clear Chat", variant="secondary", scale=1)
+            
+            # Example questions
+            gr.Examples(
+                examples=[
+                    "What do you think about artificial intelligence?",
+                    "@Corvus Can you explain Stoicism?",
+                    "@Crow @Raven Compare birds and technology",
+                    "Tell me about something fascinating",
+                    "@Magpie What's the most interesting thing you've found?"
+                ],
+                inputs=[msg],
+                label="Example Questions"
+            )
             
             # API Key input (separated with spacing)
             gr.HTML("<div style='margin-top: 20px;'></div>")  # Spacer

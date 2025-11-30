@@ -68,6 +68,20 @@ button:hover {
     border-radius: var(--radius);
 }
 
+/* Force Gradio HTML wrapper to respect our container */
+#chat-container > div {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* Prevent any content from escaping */
+#chat-container * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
 /* Message wrapper */
 .chat-message {
     display: flex;

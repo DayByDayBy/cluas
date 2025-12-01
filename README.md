@@ -151,7 +151,8 @@ https://www.linkedin.com/posts/james-boag_cluas-huginn-is-almost-ready-to-submit
 
 ###   on youtube:
 
-https://www.youtube.com/watch?v=4t2Jrg2Wi5o
+https://youtu.be/2-DWDgYPWf4
+
 ---
 
 This project is licensed under the [Apache 2.0 License](LICENSE).

@@ -1,9 +1,11 @@
 import os
 import sys
 import logging
+from pathlib import Path
 
-# Add the parent directory of 'src' to sys.path to resolve imports
-sys.path.append('/Users/gboa/cluas/')
+# Add the project root to sys.path to resolve imports
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 # Disable logging for cleaner output
 logging.getLogger().setLevel(logging.CRITICAL)

@@ -1,5 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, List
+import os
+import logging
+from groq import Groq
+from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 class Character(ABC):
     """
@@ -19,6 +25,7 @@ class Character(ABC):
         self.location = location or self.default_location
         self.provider_config = provider_config or {}
         self.delay = getattr(self, "delay", 1.0)
+        self.clients = {}
 
     def _validate_api_key(self, key: str, expected_prefix: str) -> bool:
         """Validate API key format and safety."""
@@ -28,6 +35,29 @@ class Character(ABC):
             return False
         # Only allow alphanumeric, dash, underscore
         return all(c.isalnum() or c in '-_' for c in key)
+    
+    def _init_clients(self) -> None:
+        """Initialize remote provider clients."""
+        self.clients = {}
+        api_timeout = self.provider_config.get("timeout", 30)
+
+        if os.getenv("GROQ_API_KEY"):
+            self.clients["groq"] = Groq(
+                api_key=os.getenv("GROQ_API_KEY"),
+                timeout=api_timeout
+            )
+
+        if os.getenv("NEBIUS_API_KEY"):
+            self.clients["nebius"] = OpenAI(
+                api_key=os.getenv("NEBIUS_API_KEY"),
+                base_url="https://api.tokenfactory.nebius.com/v1",
+                timeout=api_timeout
+            )
+
+        if not self.clients:
+            raise ValueError(f"{self.name}: No LLM provider API keys found in environment")
+
+        logger.info("%s initialized with providers: %s", self.name, list(self.clients.keys()))
 
     @abstractmethod
     async def respond(self, message: str, history: List[Dict], user_key: Optional[str] = None) -> str:

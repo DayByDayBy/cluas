@@ -11,3 +11,4 @@ def verify_news_entrypoint(query: str, max_results: int = 5) -> dict:
     return verify_news(query, max_results)
 
 
+

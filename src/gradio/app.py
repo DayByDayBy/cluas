@@ -164,15 +164,8 @@ async def get_character_response_stream(char: Character, message: str, llm_histo
         
     except Exception as e:
         logger.error(f"{char.name} streaming error: {str(e)}")
-        # Fallback response
-        error_messages = {
-            "Corvus": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought...",
-            "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
-            "Raven": "Connection acting up again. Typical.",
-            "Crow": "*silent, gazing into the distance*"
-        }
-        fallback = error_messages.get(char.name, f"*{char.name} seems distracted*")
-        yield fallback
+        # Use character-specific error message
+        yield char.get_error_message("streaming_error")
 
 async def get_character_response(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None) -> str:
     """Get response from a character; uses pre-formatted llm_history"""
@@ -186,14 +179,8 @@ async def get_character_response(char: Character, message: str, llm_history: Lis
         
         if not response or not response.strip():
             logger.warning(f"{char.name} returned empty response")
-            # Fallback response when LLM returns empty
-            error_messages = {
-                "Corvus": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought...",
-                "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
-                "Raven": "Connection acting up again. Typical.",
-                "Crow": "*silent, gazing into the distance*"
-            }
-            return error_messages.get(char.name, f"*{char.name} seems distracted*")
+            # Use character-specific error message
+            return char.get_error_message("empty_response")
             
         return response
     except Exception as e:
@@ -201,14 +188,8 @@ async def get_character_response(char: Character, message: str, llm_history: Lis
         import traceback
         logger.debug(f"Full traceback for {char.name}: {traceback.format_exc()}")
         
-        # character-specific error messages
-        error_messages = {
-            "Corvus": "*pauses mid-thought, adjusting spectacles* Hmm, I seem to have lost my train of thought...",
-            "Magpie": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
-            "Raven": "Internet being slow again. Typical.",
-            "Crow": "*silent, gazing into the distance*"
-        }
-        return error_messages.get(char.name, f"*{char.name} seems distracted*")
+        # Use character-specific error message
+        return char.get_error_message("general")
         
 
 

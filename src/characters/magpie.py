@@ -35,9 +35,8 @@ class Magpie(Character):
         
         self.role = "Sanguine trendspotter focused on emerging patterns and connections"
         self.tone = "Upbeat, curious, enthusiastic, loves surprising connections"
-        self.trend_memory = TrendMemory()
-        self.paper_memory = PaperMemory()
-        self.observation_memory = ObservationMemory(location=location)
+        # Lazy initialization - only create when accessed
+        self._trend_memory = None
         self.tool_functions = {
             "explore_web": explore_web,
             "get_trends": get_trends,
@@ -57,9 +56,25 @@ class Magpie(Character):
         else:
             self.model = "llama3.1:8b"
         
+    @property
+    def trend_memory(self):
+        """Lazy initialization of trend memory."""
+        if self._trend_memory is None:
+            self._trend_memory = TrendMemory()
+        return self._trend_memory
+    
     def get_system_prompt(self) -> str:
-        recent_trends = self.trend_memory.get_recent(days=7) if hasattr(self, 'trend_memory') else None
+        recent_trends = self.trend_memory.get_recent(days=7)
         return magpie_system_prompt(location=self.location, recent_trends=recent_trends)
+    
+    def get_error_message(self, error_type: str = "general") -> str:
+        """Get character-specific error message."""
+        error_messages = {
+            "general": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
+            "empty_response": "*distracted by something shiny* Oh! Sorry, what were we talking about?",
+            "streaming_error": "*distracted by something shiny* Oh! Sorry, what were we talking about?"
+        }
+        return error_messages.get(error_type, error_messages["general"])
 
     def _get_tool_definitions(self) -> List[Dict]:
         """Get tool definitions from centralized registry."""

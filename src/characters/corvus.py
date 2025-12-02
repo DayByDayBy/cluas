@@ -35,8 +35,8 @@ class Corvus(Character):
         self.role = "Melancholic scholar focused on academic rigor"
         self.tone = "Precise, evidence-driven, humble, cites papers when relevant."
         
-        self.paper_memory = PaperMemory() 
-        self.observation_memory = ObservationMemory(location=self.location)
+        # Lazy initialization - only create when accessed
+        self._paper_memory = None
         self.tool_functions = {
             "academic_search": academic_search,
             "check_local_weather": check_local_weather,
@@ -57,9 +57,25 @@ class Corvus(Character):
             self.model = "llama3.1:8b"
 
     
+    @property
+    def paper_memory(self):
+        """Lazy initialization of paper memory."""
+        if self._paper_memory is None:
+            self._paper_memory = PaperMemory()
+        return self._paper_memory
+    
     def get_system_prompt(self) -> str:
         recent_papers = self.paper_memory.get_recent(days=7)
-        return corvus_system_prompt(location=self.location, recent_papers=recent_papers)        
+        return corvus_system_prompt(location=self.location, recent_papers=recent_papers)
+    
+    def get_error_message(self, error_type: str = "general") -> str:
+        """Get character-specific error message."""
+        error_messages = {
+            "general": "*pauses mid-thought, adjusting spectacles* Hmm, I seem to have lost my train of thought...",
+            "empty_response": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought...",
+            "streaming_error": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought..."
+        }
+        return error_messages.get(error_type, error_messages["general"])        
             
             
     def _get_tool_definitions(self) -> List[Dict]:
@@ -78,6 +94,15 @@ class Corvus(Character):
         return self.llm_provider.call_llm(messages, tools, temperature, max_tokens, user_key)
 
   # little bit of fuzzy for the recall:
+    
+    def get_error_message(self, error_type: str = "general") -> str:
+        """Get character-specific error message."""
+        error_messages = {
+            "general": "*pauses mid-thought, adjusting spectacles* Hmm, I seem to have lost my train of thought...",
+            "empty_response": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought...",
+            "streaming_error": "*pauses mid-thought, adjusting spectacles* I seem to have lost my train of thought..."
+        }
+        return error_messages.get(error_type, error_messages["general"])
     
     def recall_paper(self, query: str) -> Optional[Dict]:
         """Try to recall a paper from memory before searching"""

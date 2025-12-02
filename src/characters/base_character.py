@@ -69,3 +69,21 @@ class Character(ABC):
         # Default implementation: get full response and yield it
         full_response = await self.respond(message, history, user_key)
         yield full_response
+    
+    def get_error_message(self, error_type: str = "general") -> str:
+        """
+        Get character-specific error message.
+        
+        Args:
+            error_type: Type of error ("general", "empty_response", "streaming_error")
+            
+        Returns:
+            Character-specific error message
+        """
+        # Default error messages - can be overridden by subclasses
+        error_messages = {
+            "general": f"*{self.name} seems distracted*",
+            "empty_response": f"*{self.name} seems distracted*",
+            "streaming_error": f"*{self.name} seems distracted*"
+        }
+        return error_messages.get(error_type, error_messages["general"])

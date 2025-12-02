@@ -42,8 +42,8 @@ class Crow(Character):
         self.role = "Phlegmatic observer. Grounds all analysis in measurements and data. Notices what others miss."
         self.tone = "Thoughtful, deliberate, calm. Patient, detail-oriented. Shares specific observations; never guesses."
 
-        self.observation_memory = ObservationMemory()
-        self.paper_memory = PaperMemory()
+        # Lazy initialization - only create when accessed
+        self._observation_memory = None
         
         # map tool names to functions for dispatch
         self.tool_functions = {
@@ -69,9 +69,25 @@ class Crow(Character):
         else:
             self.model = "llama3.1:8b"
         
+    @property
+    def observation_memory(self):
+        """Lazy initialization of observation memory."""
+        if self._observation_memory is None:
+            self._observation_memory = ObservationMemory()
+        return self._observation_memory
+    
     def get_system_prompt(self) -> str:
         recent_observations = self.observation_memory.get_recent(days=3)
         return crow_system_prompt(location=self.location, recent_observations=recent_observations)
+    
+    def get_error_message(self, error_type: str = "general") -> str:
+        """Get character-specific error message."""
+        error_messages = {
+            "general": "*silent, gazing into the distance*",
+            "empty_response": "*silent, gazing into the distance*",
+            "streaming_error": "*silent, gazing into the distance*"
+        }
+        return error_messages.get(error_type, error_messages["general"])
 
     def _get_tool_definitions(self) -> List[Dict]:
         """Get tool definitions from centralized registry."""

@@ -32,8 +32,7 @@ class Raven(Character):
         
         self.role = "Choleric activist challenging misinformation and demanding accountability"
         self.tone = "Direct, assertive, justice-oriented, calls out weak claims"
-        self.paper_memory = PaperMemory()
-        self.observation_memory = ObservationMemory(location=location)
+        # Memory instances not currently used by Raven - removed for optimization
         self.tool_functions = {
             "verify_news": verify_news,
             "explore_web": explore_web,
@@ -59,6 +58,15 @@ class Raven(Character):
     def get_system_prompt(self) -> str:
         # Raven doesn't have a dedicated source memory yet, but could be added
         return raven_system_prompt(location=self.location, recent_sources=None)
+    
+    def get_error_message(self, error_type: str = "general") -> str:
+        """Get character-specific error message."""
+        error_messages = {
+            "general": "Connection acting up again. Typical.",
+            "empty_response": "Connection acting up again. Typical.",
+            "streaming_error": "Connection acting up again. Typical."
+        }
+        return error_messages.get(error_type, error_messages["general"])
 
     def _get_tool_definitions(self) -> List[Dict]:
         """Return tool definitions for function calling"""

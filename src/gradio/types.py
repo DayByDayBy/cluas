@@ -1,6 +1,7 @@
-from typing import Literal, List, Dict
+from typing import Literal, List, Dict, Any
 from dataclasses import dataclass
 from src.characters.registry import REGISTRY
+from src.gradio.message_types import ChatMessage, LLMMessage
 
 @dataclass
 class BaseMessage:
@@ -9,14 +10,14 @@ class BaseMessage:
     speaker: str  # "user", "corvus", "magpie", etc.
     content: str
     
-    def to_llm_format(self) -> Dict:
+    def to_llm_format(self) -> LLMMessage:
         """Convert to LLM API format (flat)"""
         return {
             "role": self.role,
             "content": self.content
         }
     
-    def to_gradio_format(self) -> Dict:
+    def to_gradio_format(self) -> Dict[str, Any]:
         """Convert to Gradio chatbot format (nested)"""
         return {
             "role": self.role,
@@ -43,15 +44,15 @@ class UIMessage(BaseMessage):
         )
 
 # Utility functions
-def to_llm_history(messages: List[BaseMessage]) -> List[Dict]:
+def to_llm_history(messages: List[BaseMessage]) -> List[LLMMessage]:
     """Convert message list to LLM API format"""
     return [msg.to_llm_format() for msg in messages]
 
-def to_gradio_history(messages: List[BaseMessage]) -> List[Dict]:
+def to_gradio_history(messages: List[BaseMessage]) -> List[Dict[str, Any]]:
     """Convert message list to Gradio chatbot format"""
     return [msg.to_gradio_format() for msg in messages]
 
-def from_gradio_format(gradio_msg: Dict) -> BaseMessage:
+def from_gradio_format(gradio_msg: Dict[str, Any]) -> BaseMessage:
     """Parse Gradio format back to BaseMessage"""
     role = gradio_msg["role"]
 

@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import Dict, Any, Callable, List, TypedDict
+from typing import Dict, Any, Callable, List, TypedDict, Protocol
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
@@ -12,6 +12,7 @@ from src.cluas_mcp.web.trending import get_trends, explore_trend_angles
 from src.cluas_mcp.news.news_search_entrypoint import verify_news
 from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
 from src.cluas_mcp.common.check_local_weather import check_local_weather_sync
+from src.cluas_mcp.common.exceptions import ToolNotFoundError, ToolValidationError, ToolExecutionError
 from .formatters import (
     format_bird_sightings, 
     format_news_results, 
@@ -30,9 +31,18 @@ logger = logging.getLogger(__name__)
 mcp = Server("cluas-huginn")
 
 # Define a type for tool handlers
+
+class ToolHandlerFunc(Protocol):
+    """Protocol for tool handler functions."""
+    def __call__(self, **kwargs: Any) -> Any: ...
+
+class ToolFormatterFunc(Protocol):
+    """Protocol for formatter functions."""
+    def __call__(self, results: Dict[str, Any]) -> str: ...
+
 class ToolHandler(TypedDict):
-    handler: Callable
-    formatter: Callable
+    handler: ToolHandlerFunc
+    formatter: ToolFormatterFunc
     required_args: List[str]
     description: str
     inputSchema: Dict[str, Any]
@@ -243,7 +253,7 @@ async def call_tool(tool_name: str, arguments: dict) -> List[TextContent]:
     logger.info(f"Calling tool: {tool_name} with arguments: {arguments}")
 
     if tool_name not in TOOL_HANDLERS:
-        raise ValueError(f"Unknown tool: {tool_name}")
+        raise ToolNotFoundError(tool_name)
 
     handler_info = TOOL_HANDLERS[tool_name]
     handler_func = handler_info["handler"]
@@ -251,9 +261,9 @@ async def call_tool(tool_name: str, arguments: dict) -> List[TextContent]:
     required_args = handler_info["required_args"]
 
     # Validate required arguments
-    for arg in required_args:
-        if arg not in arguments or arguments[arg] is None:
-            raise ValueError(f"'{arg}' is required for tool '{tool_name}'")
+    missing_args = [arg for arg in required_args if arg not in arguments or arguments[arg] is None]
+    if missing_args:
+        raise ToolValidationError(tool_name, missing_args)
 
     # Call handler with arguments
     loop = asyncio.get_event_loop()
@@ -261,13 +271,23 @@ async def call_tool(tool_name: str, arguments: dict) -> List[TextContent]:
         if asyncio.iscoroutinefunction(handler_func):
             results = await handler_func(**arguments)
         else:
-            results = await loop.run_in_executor(None, lambda: handler_func(**arguments))
+            # Use functools.partial to properly capture arguments
+            from functools import partial
+            results = await loop.run_in_executor(None, partial(handler_func, **arguments))
         logger.debug(f"Tool {tool_name} returned results: {results}")
+    except ToolExecutionError:
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        logger.error(f"Error calling tool {tool_name}: {e}")
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        logger.error(f"Error calling tool {tool_name}: {e}", exc_info=True)
+        raise ToolExecutionError(tool_name, str(e), original_error=e)
 
-    formatted = formatter_func(results)
+    try:
+        formatted = formatter_func(results)
+    except Exception as e:
+        logger.error(f"Error formatting results for tool {tool_name}: {e}", exc_info=True)
+        raise ToolExecutionError(tool_name, f"Formatter failed: {str(e)}", original_error=e)
+    
     return [TextContent(type="text", text=formatted)]
 
 

@@ -6,17 +6,15 @@ import html
 import random
 import re
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
-from src.characters.corvus import Corvus
-from src.characters.magpie import Magpie
-from src.characters.raven import Raven
-from src.characters.crow import Crow
-from src.characters.neutral_moderator import Moderator
 from src.characters.base_character import Character
+from src.characters.factory import CharacterFactory
 from src.characters.registry import register_instance, get_all_characters, REGISTRY
 from src.gradio.types import BaseMessage, UIMessage, to_llm_history, from_gradio_format
+from src.gradio.message_types import ChatMessage, LLMMessage
 from gradio.themes import Monochrome
 
 
@@ -34,23 +32,26 @@ def sanitize_tool_calls(text: str) -> str:
         return f"*Tool call · {func} {payload}*"
     return TOOL_CALL_PATTERN.sub(_replace, text)
 
-# instantiate characters (as you already do)
-corvus = Corvus()
-magpie = Magpie()
-raven = Raven()
-crow = Crow()
-moderator_instance = Moderator()
+# Initialize characters using factory (lazy loading)
+# Characters are created on first access, supporting config overrides
+def _init_characters():
+    """Initialize all characters using factory pattern."""
+    # Check for config file
+    config_file = Path("characters_config.json")
+    if config_file.exists():
+        CharacterFactory.set_config_file(config_file)
+    
+    # Get all characters (lazy initialization)
+    characters = CharacterFactory.get_all_characters()
+    
+    # Register them
+    for char in characters.values():
+        register_instance(char)
+    
+    return characters
 
-# register them
-register_instance(corvus)
-register_instance(magpie)
-register_instance(raven)
-register_instance(crow)
-
-
-
-# then use
-CHARACTERS = get_all_characters()  # List[Character]
+CHARACTERS = _init_characters()  # Dict[str, Character]
+moderator_instance = CHARACTERS.get("moderator")
 
 
 #  debate phases:
@@ -84,44 +85,73 @@ theme.set(
 
 
 
-def render_chat_html(history: List[Dict]) -> str:
+def get_message_html(message: ChatMessage) -> str:
+    """Render a single message to HTML."""
+    role = message.get("role", "")
+    content = message.get("content", "")
+    name = message.get("name", "")
+    emoji = message.get("emoji", "")
+    is_typing = message.get("typing", False)
+    is_streaming = message.get("streaming", False)
+    message_id = message.get("message_id", "")
+    
+    if role == "user":
+        return f'''
+            <div class="chat-message user" data-message-id="{message_id}">
+                <div class="chat-content">
+                    <div class="chat-bubble">{html.escape(content)}</div>
+                </div>
+            </div>
+        '''
+    elif role == "assistant":
+        css_class = f"chat-message {name.lower()}"
+        if is_typing:
+            css_class += " typing"
+        elif is_streaming:
+            css_class += " streaming"
+        
+        return f'''
+            <div class="{css_class}" data-message-id="{message_id}">
+                <div class="chat-avatar">{emoji}</div>
+                <div class="chat-content">
+                    <div class="chat-name">{name}</div>
+                    <div class="chat-bubble">{html.escape(content)}</div>
+                </div>
+            </div>
+        '''
+    return ""
+
+
+def render_chat_html(history: List[ChatMessage]) -> str:
     """Render chat history to HTML (supports streaming)."""
     html_parts = []
     
     for message in history:
-        role = message.get("role", "")
-        content = message.get("content", "")
-        name = message.get("name", "")
-        emoji = message.get("emoji", "")
-        is_typing = message.get("typing", False)
-        is_streaming = message.get("streaming", False)
-        
-        if role == "user":
-            html_parts.append(f'''
-                <div class="chat-message user">
-                    <div class="chat-content">
-                        <div class="chat-bubble">{html.escape(content)}</div>
-                    </div>
-                </div>
-            ''')
-        elif role == "assistant":
-            css_class = f"chat-message {name.lower()}"
-            if is_typing:
-                css_class += " typing"
-            elif is_streaming:
-                css_class += " streaming"
-            
-            html_parts.append(f'''
-                <div class="{css_class}">
-                    <div class="chat-avatar">{emoji}</div>
-                    <div class="chat-content">
-                        <div class="chat-name">{name}</div>
-                        <div class="chat-bubble">{html.escape(content)}</div>
-                    </div>
-                </div>
-            ''')
+        # Ensure message has an ID
+        if "message_id" not in message:
+            message["message_id"] = f"msg_{int(time.time() * 1000000)}"
+        html_parts.append(get_message_html(message))
     
     return ''.join(html_parts)
+
+
+def update_streaming_message(history: List[ChatMessage], message_id: str, new_content: str) -> str:
+    """Update a single streaming message and return its HTML.
+    
+    This is more efficient than re-rendering the entire history.
+    """
+    # Find the message by ID
+    for i, msg in enumerate(history):
+        if msg.get("message_id") == message_id:
+            # Update the message content
+            updated_msg = msg.copy()
+            updated_msg["content"] = new_content
+            updated_msg["streaming"] = True
+            return get_message_html(updated_msg)
+    
+    # Message not found, return empty string
+    logger.warning(f"Message with ID {message_id} not found for update")
+    return ""
 
 
 
@@ -139,7 +169,7 @@ def parse_mentions(message: str) -> list[str] | None:
     return mentions or None
 
 
-def format_message(character: Character, message: str) -> Tuple[str, str]:
+def format_message(character: Character, message: str) -> tuple[str, str]:
     """Format message with character name and emoji"""
     emoji = getattr(character, "emoji", "💬")
     color = getattr(character, "color", "#121314")
@@ -149,7 +179,7 @@ def format_message(character: Character, message: str) -> Tuple[str, str]:
     
     return formatted, name
 
-async def get_character_response_stream(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None):
+async def get_character_response_stream(char: Character, message: str, llm_history: List[LLMMessage], user_key: Optional[str] = None):
     """Stream character response in real-time chunks."""
     try:
         logger.debug(f"Streaming {char.name}.respond() with message: {message[:50]}...")
@@ -167,7 +197,7 @@ async def get_character_response_stream(char: Character, message: str, llm_histo
         # Use character-specific error message
         yield char.get_error_message("streaming_error")
 
-async def get_character_response(char: Character, message: str, llm_history: List[Dict], user_key: Optional[str] = None) -> str:
+async def get_character_response(char: Character, message: str, llm_history: List[LLMMessage], user_key: Optional[str] = None) -> str:
     """Get response from a character; uses pre-formatted llm_history"""
     try:
         logger.debug(f"Calling {char.name}.respond() with message: {message[:50]}...")
@@ -193,7 +223,7 @@ async def get_character_response(char: Character, message: str, llm_history: Lis
         
 
 
-async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] = None):
+async def chat_fn_stream(msg: str, history: List[ChatMessage], user_key: Optional[str] = None):
     """Streaming chat function - yields updates in real-time."""
     if not msg or not msg.strip():
         yield history
@@ -205,7 +235,7 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
     # Parse mentions
     mentioned_names = parse_mentions(msg)
     if not mentioned_names:
-        mentioned_names = [char.name for char in CHARACTERS]
+        mentioned_names = [char.name for char in CHARACTERS.values()]
     
     # Get mentioned characters (case insensitive)
     mentioned = []
@@ -228,7 +258,8 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
             "content": f"*{char.name} is thinking...*",
             "name": char.name,
             "emoji": char.emoji,
-            "typing": True
+            "typing": True,
+            "message_id": f"msg_{int(time.time() * 1000000)}_{char.name}"
         })
         typing_count += 1
 
@@ -239,9 +270,22 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
         history.pop()  # Remove last typing indicator
     
     for char in mentioned:
+        streaming_message: Optional[ChatMessage] = None
         try:
             llm_history = to_llm_history(internal_history[-5:])
             await asyncio.sleep(0.5)  # Rate limiting delay
+            
+            # Create initial streaming message with unique ID
+            message_id = f"msg_{int(time.time() * 1000000)}_{char.name}"
+            streaming_message = {
+                "role": "assistant", 
+                "content": "",
+                "name": char.name,
+                "emoji": char.emoji,
+                "streaming": True,
+                "message_id": message_id
+            }
+            history.append(streaming_message)
             
             # Stream response
             response = ""
@@ -249,39 +293,39 @@ async def chat_fn_stream(msg: str, history: List[Dict], user_key: Optional[str] 
                 response += chunk
                 # Update with partial response (sanitized)
                 sanitized_partial = sanitize_tool_calls(response)
-                history.append({
-                    "role": "assistant", 
-                    "content": sanitized_partial,
-                    "name": char.name,
-                    "emoji": char.emoji,
-                    "streaming": True
-                })
+                
+                # Update the streaming message in place
+                if streaming_message:
+                    streaming_message["content"] = sanitized_partial
+                
+                # Yield incremental update (only the updated message HTML)
+                # For now, we still yield full HTML but with message ID for future DOM updates
                 yield render_chat_html(history)
-                history.pop()  # Remove for next update
             
-            # Sanitize and final response
+            # Sanitize and final response - remove streaming flag
             sanitized_response = sanitize_tool_calls(response)
-            history.append({
-                "role": "assistant",
-                "content": sanitized_response,
-                "name": char.name,
-                "emoji": char.emoji
-            })
+            if streaming_message:
+                streaming_message["content"] = sanitized_response
+                streaming_message.pop("streaming", None)
             internal_history.append(BaseMessage(role="assistant", speaker=char.name, content=sanitized_response))
             
         except Exception as e:
             logger.error(f"Error in chat_fn_stream for {char.name}: {e}")
+            # Remove streaming message if it exists
+            if streaming_message and streaming_message in history:
+                history.remove(streaming_message)
             history.append({
                 "role": "assistant",
                 "content": f"*{char.name} seems distracted*",
                 "name": char.name,
-                "emoji": char.emoji
+                "emoji": char.emoji,
+                "message_id": f"msg_{int(time.time() * 1000000)}_{char.name}"
             })
     
     yield render_chat_html(history)  # Final result
 
 
-async def chat_fn(msg: str, history: List[Dict], user_key: Optional[str] = None) -> str:
+async def chat_fn(msg: str, history: List[ChatMessage], user_key: Optional[str] = None) -> str:
     """Non-streaming chat function that returns HTML."""
     result = []
     async for html_update in chat_fn_stream(msg, history, user_key):
@@ -393,7 +437,7 @@ async def deliberate(
         seed = random.randint(0, 1_000_000)
     rng = random.Random(seed)
 
-    char_order = CHARACTERS.copy()
+    char_order = list(CHARACTERS.values())
     rng.shuffle(char_order)
     order_names = [char.name for char in char_order]
 
@@ -476,7 +520,7 @@ async def deliberate(
         final_summary = await _neutral_summary(full_history_text, user_key=user_key)
         summary_author = "Moderator"
     else:
-        name_map = {char.name.lower(): char for char in CHARACTERS}
+        name_map = {char.name.lower(): char for char in CHARACTERS.values()}
         selected = name_map.get(summariser_normalized)
         if not selected:
             logger.warning(f"Summariser '{summariser}' not found in characters; falling back to moderator")
@@ -681,7 +725,7 @@ with gr.Blocks(title="Cluas Huginn") as demo:
             
             avatar_images = [
                 str(avatar_folder / f"{char.name.lower()}.png") 
-                for char in CHARACTERS
+                for char in CHARACTERS.values()
             ]
 
             # Chatbot state

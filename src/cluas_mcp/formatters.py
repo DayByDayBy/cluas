@@ -1,4 +1,16 @@
 """a bunch of formatters for server.py"""
+from typing import Dict, Any
+from .types import (
+    SearchResults,
+    WebSearchResults,
+    NewsResults,
+    WeatherResults,
+    WeatherPatterns,
+    BirdSightingsResults,
+    TrendingTopicsResults,
+    TrendAnglesResults,
+    TemporalPatternsResults,
+)
 
 
 __all__ = [
@@ -14,7 +26,7 @@ __all__ = [
 ]
 
 
-def format_search_results(results: dict) -> str:
+def format_search_results(results: SearchResults) -> str:
     """format search results into readable string"""
     output = []
     
@@ -62,7 +74,7 @@ def format_search_results(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_web_search_results(results: dict) -> str:
+def format_web_search_results(results: WebSearchResults) -> str:
     """Format web search results into readable string"""
     output = []
     output.append(f"=== Web Search Results for: {results.get('query', 'N/A')} ===\n")
@@ -79,7 +91,7 @@ def format_web_search_results(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_trending_topics(results: dict) -> str:
+def format_trending_topics(results: TrendingTopicsResults) -> str:
     """Format trending topics into readable string"""
     output = []
     output.append(f"=== Trending Topics ({results.get('category', 'general')}) ===\n")
@@ -95,7 +107,7 @@ def format_trending_topics(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_trend_angles(results: dict) -> str:
+def format_trend_angles(results: TrendAnglesResults) -> str:
     """Format trend angles analysis into readable string"""
     output = []
     output.append("=== Trend Analysis: Multiple Angles ===\n")
@@ -165,7 +177,7 @@ def format_trend_angles(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_local_weather(results: dict) -> str:
+def format_local_weather(results: WeatherResults) -> str:
     """Format local weather data into readable string"""
     return (
         f"=== Local Weather: {results.get('location', 'N/A')} ===\n"
@@ -177,7 +189,7 @@ def format_local_weather(results: dict) -> str:
         f"Time: {results.get('time', 'N/A')}\n"
     )
 
-def format_news_results(results: dict) -> str:
+def format_news_results(results: NewsResults) -> str:
     """Format news search results into readable string"""
     output = []
     output.append(f"=== News Search Results for: {results.get('query', 'N/A')} ===\n")
@@ -197,7 +209,7 @@ def format_news_results(results: dict) -> str:
     return "\n".join(output)
 
 
-def format_bird_sightings(results: dict) -> str:
+def format_bird_sightings(results: BirdSightingsResults) -> str:
     """Format bird sightings into readable string"""
     output = []
     output.append(f"=== Bird Sightings: {results.get('species', 'all')} in {results.get('location', 'N/A')} ===\n")
@@ -217,7 +229,7 @@ def format_bird_sightings(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_weather_patterns(results: dict) -> str:
+def format_weather_patterns(results: WeatherPatterns) -> str:
     """Format weather patterns into readable string"""
     output = []
     patterns = results.get("patterns", {})
@@ -230,7 +242,7 @@ def format_weather_patterns(results: dict) -> str:
     
     return "\n".join(output)
 
-def format_temporal_patterns(results: dict) -> str:
+def format_temporal_patterns(results: TemporalPatternsResults) -> str:
     """Format temporal pattern analysis into readable string"""
     output = []
     

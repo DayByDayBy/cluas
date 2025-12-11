@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from urllib.parse import quote_plus
 import feedparser
 
-from src.cluas_mcp.domain.keywords import CORVID_KEYWORDS
+from src.cluas_mcp.domain import CORVID_KEYWORDS
 
 
 logger = logging.getLogger(__name__)

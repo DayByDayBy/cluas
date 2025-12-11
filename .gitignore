@@ -18,3 +18,5 @@ wheels/
 
 .cursor
 late_stage_review.md
+
+.DS_Store

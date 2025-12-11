@@ -1,7 +1,5 @@
 import pytest
-from src.cluas_mcp.common.observation_memory import ObservationMemory
-from src.cluas_mcp.common.paper_memory import PaperMemory
-from src.cluas_mcp.common.trend_memory import TrendMemory
+from src.cluas_mcp.common import ObservationMemory, PaperMemory, TrendMemory
 
 
 # ============================================================================

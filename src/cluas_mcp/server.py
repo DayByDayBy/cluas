@@ -10,19 +10,19 @@ from src.cluas_mcp.academic.academic_search_entrypoint import academic_search
 from src.cluas_mcp.web.explore_web import explore_web
 from src.cluas_mcp.web.trending import get_trends, explore_trend_angles
 from src.cluas_mcp.news.news_search_entrypoint import verify_news
-from src.cluas_mcp.observation.observation_entrypoint import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
-from src.cluas_mcp.common.check_local_weather import check_local_weather_sync
+from src.cluas_mcp.observation import get_bird_sightings, get_weather_patterns, analyze_temporal_patterns
+from src.cluas_mcp.common import check_local_weather_sync
 from .formatters import (
-    format_bird_sightings, 
-    format_news_results, 
-    format_local_weather, 
-    format_search_results, 
-    format_temporal_patterns, 
-    format_trend_angles, 
-    format_trending_topics, 
+    format_bird_sightings,
+    format_news_results,
+    format_local_weather,
+    format_search_results,
+    format_temporal_patterns,
+    format_trend_angles,
+    format_trending_topics,
     format_weather_patterns,
-    format_web_search_results
-    )
+    format_web_search_results,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -9,13 +9,17 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
-from src.characters.corvus import Corvus
-from src.characters.magpie import Magpie
-from src.characters.raven import Raven
-from src.characters.crow import Crow
-from src.characters.neutral_moderator import Moderator
-from src.characters.base_character import Character
-from src.characters.registry import register_instance, get_all_characters, REGISTRY
+from src.characters import (
+    Corvus,
+    Magpie,
+    Raven,
+    Crow,
+    Moderator,
+    Character,
+    register_instance,
+    get_all_characters,
+    REGISTRY,
+)
 from src.gradio.types import BaseMessage, UIMessage, to_llm_history, from_gradio_format
 from gradio.themes import Monochrome
 

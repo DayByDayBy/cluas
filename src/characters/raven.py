@@ -10,9 +10,7 @@ from openai import OpenAI
 from src.cluas_mcp.news.news_search import verify_news
 from src.cluas_mcp.web.explore_web import explore_web
 from src.cluas_mcp.web.trending import get_trends
-from src.cluas_mcp.common.paper_memory import PaperMemory
-from src.cluas_mcp.common.observation_memory import ObservationMemory
-from src.cluas_mcp.common.check_local_weather import check_local_weather
+from src.cluas_mcp.common import PaperMemory, ObservationMemory, check_local_weather
 from src.prompts.character_prompts import raven_system_prompt
 from src.characters.base_character import Character
 

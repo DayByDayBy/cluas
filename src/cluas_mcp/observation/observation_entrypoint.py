@@ -5,7 +5,7 @@ from src.cluas_mcp.observation.weather import fetch_weather_patterns
 from src.cluas_mcp.observation.airquality import fetch_air_quality
 from src.cluas_mcp.observation.moon_phase import fetch_moon_phase
 from src.cluas_mcp.observation.sunrise_sunset import fetch_sunrise_sunset
-from src.cluas_mcp.common.observation_memory import ObservationMemory
+from src.cluas_mcp.common import ObservationMemory
 
 logger = logging.getLogger(__name__)
 

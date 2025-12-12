@@ -48,11 +48,14 @@ class Magpie(Character):
         
         if provider_config is None:
             provider_config = {
-                "primary": "groq",
-                "fallback": ["nebius"],
+                "primary": "nebius",
+                "fallback": ["groq"],
                 "models": {
-                    "groq": "llama-3.1-8b-instant",
-                    "nebius": "meta-llama/Llama-3.3-70B-Instruct"
+                    "nebius": [
+                        "Qwen/Qwen3-Next-80B-A3B-Thinking",
+                        "meta-llama/Llama-3.3-70B-Instruct",
+                    ],
+                    "groq": "meta-llama/llama-4-scout-17b-16e-instruct",
                 },
                 "timeout": 60,
                 "use_cloud": True
@@ -370,21 +373,30 @@ class Magpie(Character):
                 continue
 
             try:
-                model = self.provider_config["models"][provider]
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto" if tools else None,
-                    temperature=temperature,
-                    max_tokens=max_tokens
-                )
-                logger.info("%s successfully used %s", self.name, provider)
-                return response, provider
+                model_spec = self.provider_config["models"][provider]
             except Exception as exc:
                 last_error = exc
                 logger.warning("%s: %s failed (%s)", self.name, provider, str(exc)[:100])
                 continue
+
+            models_to_try = model_spec if isinstance(model_spec, list) else [model_spec]
+
+            for model in models_to_try:
+                try:
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto" if tools else None,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                    logger.info("%s successfully used %s (%s)", self.name, provider, model)
+                    return response, provider
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: %s (%s) failed (%s)", self.name, provider, model, str(exc)[:100])
+                    continue
 
         raise RuntimeError(f"All LLM providers failed for {self.name}. Last error: {last_error}")
 

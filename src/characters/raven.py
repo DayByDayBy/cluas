@@ -45,10 +45,13 @@ class Raven(Character):
                 "primary": "nebius",
                 "fallback": ["groq"],
                 "models": {
-                    "nebius": "meta-llama/Llama-3.3-70B-Instruct",
-                    "groq": "llama-3.1-8b-instant"
+                    "nebius": [
+                        "Qwen/Qwen3-235B-A22B-Thinking-2507",
+                        "moonshotai/Kimi-K2-Thinking",
+                    ],
+                    "groq": "qwen/qwen3-32b"
                 },
-                "timeout": 30,
+                "timeout": 60,
                 "use_cloud": True
             }
         
@@ -370,26 +373,36 @@ class Raven(Character):
                 continue
                 
             try:
-                model = self.provider_config["models"][provider]
-                logger.debug(f"{self.name} trying {provider} with model {model}")
-                
-                # Both Groq and OpenAI clients have same interface
-                response = self.clients[provider].chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto" if tools else None,
-                    temperature=temperature,
-                    max_tokens=max_tokens
-                )
-                
-                logger.info(f"{self.name} successfully used {provider}")
-                return response, provider
-                
+                model_spec = self.provider_config["models"][provider]
+            
             except Exception as e:
                 last_error = e
                 logger.warning(f"{self.name}: {provider} failed - {str(e)[:100]}")
                 continue
+
+            models_to_try = model_spec if isinstance(model_spec, list) else [model_spec]
+
+            for model in models_to_try:
+                try:
+                    logger.debug(f"{self.name} trying {provider} with model {model}")
+
+                    # Both Groq and OpenAI clients have same interface
+                    response = self.clients[provider].chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto" if tools else None,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+
+                    logger.info(f"{self.name} successfully used {provider} ({model})")
+                    return response, provider
+
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"{self.name}: {provider} ({model}) failed - {str(e)[:100]}")
+                    continue
         
         # If we get here, all providers failed
         raise Exception(f"All LLM providers failed for {self.name}. Last error: {last_error}")

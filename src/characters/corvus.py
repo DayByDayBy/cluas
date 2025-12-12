@@ -46,10 +46,13 @@ class Corvus(Character):
                 "primary": "nebius",
                 "fallback": ["groq"],
                 "models": {
-                    "nebius": "meta-llama/Llama-3.3-70B-Instruct",
-                    "groq": "llama-3.1-8b-instant"
+                    "nebius": [
+                        "moonshotai/Kimi-K2-Thinking",
+                        "Qwen/Qwen3-235B-A22B-Thinking-2507",
+                    ],
+                    "groq": "qwen/qwen3-32b",
                 },
-                "timeout": 30,
+                "timeout": 60,
                 "use_cloud": True
             }
 
@@ -355,21 +358,30 @@ class Corvus(Character):
                 continue
 
             try:
-                model = self.provider_config["models"][provider]
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto" if tools else None,
-                    temperature=temperature,
-                    max_tokens=max_tokens
-                )
-                logger.info("%s successfully used %s", self.name, provider)
-                return response, provider
+                model_spec = self.provider_config["models"][provider]
             except Exception as exc:
                 last_error = exc
                 logger.warning("%s: %s failed (%s)", self.name, provider, str(exc)[:100])
                 continue
+
+            models_to_try = model_spec if isinstance(model_spec, list) else [model_spec]
+
+            for model in models_to_try:
+                try:
+                    response = client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto" if tools else None,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                    logger.info("%s successfully used %s (%s)", self.name, provider, model)
+                    return response, provider
+                except Exception as exc:
+                    last_error = exc
+                    logger.warning("%s: %s (%s) failed (%s)", self.name, provider, model, str(exc)[:100])
+                    continue
 
         raise RuntimeError(f"All LLM providers failed for {self.name}. Last error: {last_error}")
 

@@ -384,6 +384,10 @@ class Raven(Character):
 
             for model in models_to_try:
                 try:
+                    if self._provider_in_cooldown(provider, model):
+                        logger.debug(f"{self.name}: Skipping {provider} ({model}) - cooldown")
+                        continue
+
                     logger.debug(f"{self.name} trying {provider} with model {model}")
 
                     # Both Groq and OpenAI clients have same interface
@@ -396,11 +400,16 @@ class Raven(Character):
                         max_tokens=max_tokens
                     )
 
+                    self._note_provider_success(provider, model)
                     logger.info(f"{self.name} successfully used {provider} ({model})")
                     return response, provider
 
                 except Exception as e:
                     last_error = e
+                    if self._is_rate_limit_error(e):
+                        retry_after_s = self._extract_retry_after_seconds(e)
+                        cooldown_s = self._note_provider_rate_limited(provider, model, retry_after_s=retry_after_s)
+                        logger.warning(f"{self.name}: {provider} ({model}) rate-limited; cooling down {cooldown_s:.1f}s")
                     logger.warning(f"{self.name}: {provider} ({model}) failed - {str(e)[:100]}")
                     continue
         

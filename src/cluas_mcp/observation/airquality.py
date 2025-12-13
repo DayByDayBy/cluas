@@ -95,4 +95,4 @@ def fetch_air_quality(city: str, parameter: str = "pm25", limit: int = 5) -> Dic
         "parameter": parameter,
         "locations": results,
         "source": "openaq"
-    },
+    }

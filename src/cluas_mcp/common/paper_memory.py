@@ -89,7 +89,7 @@ class PaperMemory:
 
     def prune_long_term(self, older_than_days: int = 365):
         """Optionally prune memory items older than `older_than_days`."""
-        cutoff = datetime.now(UTC).isoformat() - timedelta(days=older_than_days)
+        cutoff = datetime.now(UTC) - timedelta(days=older_than_days)
         keys_to_delete = [
             k for k, v in self.memory.items()
             if datetime.fromisoformat(v["first_mentioned"]) < cutoff

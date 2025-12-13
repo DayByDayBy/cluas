@@ -55,6 +55,9 @@ def verify_news(query: str, max_results: int = 5) -> dict:
         except Exception as e:
             logger.warning(f"SerpAPI Bing failed: {e}, falling back to mock")
 
+    logger.warning("Using mock data")
+    return _mock_news(query, max_results)
+
 def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
     """Search news using NewsAPI via direct HTTP request."""
     api_key = os.getenv("NEWS_API_KEY")
@@ -103,7 +106,7 @@ def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
     return _mock_news(query, max_results)
 
 # --- Helper functions (unchanged) ---
-def verify_news_newsapi(query: str, max_results: int = 5) -> dict:
+def verify_news_newsapi_sdk(query: str, max_results: int = 5) -> dict:
     """Search news using NewsAPI."""
     api_key = os.getenv("NEWS_API_KEY")
     if not api_key:

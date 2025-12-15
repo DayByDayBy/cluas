@@ -267,7 +267,12 @@ async def call_tool(tool_name: str, arguments: dict) -> List[TextContent]:
         logger.error(f"Error calling tool {tool_name}: {e}")
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
-    formatted = formatter_func(results)
+    try:
+        formatted = formatter_func(results)
+    except Exception as e:
+        logger.error(f"Error formatting tool {tool_name} results: {e}")
+        return [TextContent(type="text", text=f"Error formatting result: {str(e)}")]
+
     return [TextContent(type="text", text=formatted)]
 
 

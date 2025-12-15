@@ -42,7 +42,7 @@ def fetch_bird_sightings(location: str = None, max_results: int = 10, species: s
         coords = LOCATION_COORDS.get(location_lower)
 
         if coords:
-            url = f"{EBIRD_BASE_URL}/data/obs/geo/recent"
+            url = f"{EBIRD_BASE_URL}
             params = {
                 "lat": coords["lat"],
                 "lng": coords["lng"],

@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from src.api.models import (
@@ -35,6 +35,7 @@ from src.gradio.app import (
     get_character_response_stream,
     deliberate,
     CHARACTERS as CHARACTER_LIST,
+    sanitize_tool_calls,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,11 +52,12 @@ def _now_iso() -> str:
 # =============================================================================
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check():
+async def health_check(request: Request):
     """Health check endpoint."""
+    gradio_available = any(getattr(route, "path", None) == "/gradio" for route in request.app.routes)
     return HealthResponse(
-        status="ok",
-        gradio_available=True,
+        status="ok" if gradio_available else "degraded",
+        gradio_available=gradio_available,
         timestamp=_now_iso(),
     )
 
@@ -114,6 +116,11 @@ async def chat_endpoint(req: ChatRequest):
     ]
     
     # Collect responses
+    user_message = Message(
+        role="user",
+        content=req.message,
+        timestamp=_now_iso(),
+    )
     new_messages: list[Message] = []
     
     for char in responding_chars:
@@ -126,7 +133,7 @@ async def chat_endpoint(req: ChatRequest):
             
             new_messages.append(Message(
                 role="assistant",
-                content=full_response.strip(),
+                content=sanitize_tool_calls(full_response.strip()),
                 speaker=char.name,
                 emoji=getattr(char, "emoji", "💬"),
                 timestamp=_now_iso(),
@@ -147,7 +154,7 @@ async def chat_endpoint(req: ChatRequest):
     duration_ms = (time.perf_counter() - start_time) * 1000
     
     # Combine history with new messages
-    full_history = list(req.history) + new_messages
+    full_history = list(req.history) + [user_message] + new_messages
     
     return ChatResponse(
         history=full_history,
@@ -223,24 +230,27 @@ async def chat_stream(websocket: WebSocket):
                     WSChatMessage(type="start", character=char.name).model_dump()
                 )
                 
+                full_response = ""
                 try:
                     async for chunk in get_character_response_stream(
                         char, message, llm_history, user_key=api_key
                     ):
                         if chunk:
+                            full_response += chunk
                             await websocket.send_json(
                                 WSChatMessage(type="chunk", character=char.name, content=chunk).model_dump()
                             )
                     
                     # Signal end of this character's response
+                    sanitized = sanitize_tool_calls(full_response.strip())
                     await websocket.send_json(
-                        WSChatMessage(type="done", character=char.name).model_dump()
+                        WSChatMessage(type="done", character=char.name, content=sanitized).model_dump()
                     )
                     
                 except Exception as e:
                     logger.error(f"Streaming error for {char.name}: {e}")
                     await websocket.send_json(
-                        WSChatMessage(type="error", character=char.name, error=str(e)).model_dump()
+                        WSChatMessage(type="error", character=char.name, error="Streaming error").model_dump()
                     )
                 
                 await asyncio.sleep(0.3)  # Brief pause between characters
@@ -251,9 +261,9 @@ async def chat_stream(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
         try:
             await websocket.send_json(
-                WSChatMessage(type="error", error=str(e)).model_dump()
+                WSChatMessage(type="error", error="WebSocket error").model_dump()
             )
-        except:
+        except Exception:
             pass
 
 
@@ -283,7 +293,7 @@ async def deliberate_endpoint(req: DeliberationRequest):
         )
     except Exception as e:
         logger.error(f"Deliberation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Deliberation failed")
     
     duration_ms = (time.perf_counter() - start_time) * 1000
     
@@ -473,7 +483,9 @@ async def deliberate_stream(websocket: WebSocket):
         summariser_normalized = summariser.strip().lower()
         
         if summariser_normalized == "moderator":
-            final_summary = await _neutral_summary(full_history_text, user_key=api_key)
+            final_summary = sanitize_tool_calls(
+                (await _neutral_summary(full_history_text, user_key=api_key)).strip()
+            )
             summary_author = "Moderator"
         else:
             name_map = {char.name.lower(): char for char in CHARACTER_LIST}
@@ -484,15 +496,19 @@ async def deliberate_stream(websocket: WebSocket):
                 "Provide a concise synthesis (3 sentences max) from your perspective, "
                 f"referencing the discussion below.\n\n{full_history_text}"
             )
-            final_summary = await get_character_response_stream(
+            full_summary = ""
+            async for chunk in get_character_response_stream(
                 selected, summary_prompt, [], user_key=api_key
-            ).__anext__()  # Get first chunk for simplicity; could stream too
+            ):
+                full_summary += chunk
+            final_summary = sanitize_tool_calls(full_summary.strip())
         
         # Signal done with final summary
         await websocket.send_json(
             WSDeliberationMessage(
                 type="done",
-                content=f"{summary_author}: {final_summary}",
+                character=summary_author,
+                content=final_summary,
             ).model_dump()
         )
         
@@ -502,9 +518,9 @@ async def deliberate_stream(websocket: WebSocket):
         logger.error(f"Deliberation WebSocket error: {e}")
         try:
             await websocket.send_json(
-                WSDeliberationMessage(type="error", error=str(e)).model_dump()
+                WSDeliberationMessage(type="error", error="Deliberation failed").model_dump()
             )
-        except:
+        except Exception:
             pass
     finally:
         await websocket.close()

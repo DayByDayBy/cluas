@@ -42,7 +42,7 @@ def fetch_bird_sightings(location: str = None, max_results: int = 10, species: s
         coords = LOCATION_COORDS.get(location_lower)
 
         if coords:
-            url = f"{EBIRD_BASE_URL}
+            url = f"{EBIRD_BASE_URL}/data/obs/geo/recent"
             params = {
                 "lat": coords["lat"],
                 "lng": coords["lng"],
@@ -81,7 +81,7 @@ def fetch_bird_sightings(location: str = None, max_results: int = 10, species: s
 
 
 
-def _mock_sightings(location: str = None, max_results: int = 10) -> List[Dict[str, Any]]:
+def _mock_sightings(location: str = None, max_results: int = 10, species: str = None) -> List[Dict[str, Any]]:
     """Fallback mock data when API is unavailable."""
     # Glasgow-specific species
     if location and ("glasgow" in location.lower() or "scotland" in location.lower() or "GB" in location):

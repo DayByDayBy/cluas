@@ -1,6 +1,6 @@
 /**
  * .ts interfaces for the Cluas Huginn API.
- *  mirrorss he Pydantic models in src/api/models.py
+ *  mirrors he Pydantic models in src/api/models.py
  */
 
 // =============================================================================
@@ -25,7 +25,7 @@ export interface CharacterInfo {
 export const CHARACTERS: Record<string, CharacterInfo> = {
   corvus: { name: 'Corvus', emoji: '🦅', color: '#2c3e50' },
   magpie: { name: 'Magpie', emoji: '🐦', color: '#8e44ad' },
-  raven: { name: 'Raven', emoji: '🦢', color: '#34495e' },
+  raven: { name: 'Raven', emoji: '🦅', color: '#34495e' },
   crow: { name: 'Crow', emoji: '🐦‍⬛', color: '#1a1a1a' },
 } as const
 

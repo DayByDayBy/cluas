@@ -23,7 +23,7 @@ dependencies = [
     "requests>=2.32.5",
     "serpapi",
     "tenacity>=9.1.2",
-    "uvicorn>=0.30.0",
+    "uvicorn[standard]>=0.30.0",
     "fastapi>=0.115.0",
 ]
 

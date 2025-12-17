@@ -365,6 +365,7 @@ dependencies = [
     { name = "astral" },
     { name = "cairosvg" },
     { name = "duckduckgo-search" },
+    { name = "fastapi" },
     { name = "feedparser" },
     { name = "gradio", extra = ["mcp", "oauth"] },
     { name = "groq" },
@@ -379,6 +380,7 @@ dependencies = [
     { name = "requests" },
     { name = "serpapi" },
     { name = "tenacity" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -392,6 +394,7 @@ requires-dist = [
     { name = "astral", specifier = ">=3.2" },
     { name = "cairosvg", specifier = ">=2.8.2" },
     { name = "duckduckgo-search", specifier = ">=8.1.1" },
+    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "feedparser", specifier = ">=6.0.12" },
     { name = "gradio", extras = ["mcp", "oauth"], specifier = "==6.0.1" },
     { name = "groq", specifier = ">=0.36.0" },
@@ -406,6 +409,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "serpapi", git = "https://github.com/serpapi/SerpApi-python.git" },
     { name = "tenacity", specifier = ">=9.1.2" },
+    { name = "uvicorn", specifier = ">=0.30.0" },
 ]
 
 [package.metadata.requires-dev]
